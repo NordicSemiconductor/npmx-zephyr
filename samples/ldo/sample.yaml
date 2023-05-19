@@ -1,0 +1,25 @@
+sample:
+  description: LDO sample
+  name: LDO
+
+common:
+    integration_platforms:
+      - nrf5340dk_nrf5340_cpuapp
+      - nrf52840dk_nrf52840
+    platform_allow: nrf5340dk_nrf5340_cpuapp nrf52840dk_nrf52840
+    tags: pmic
+    timeout: 60
+
+tests:
+  sample.ldo.output_voltage.eng_b:
+    extra_args: CONFIG_NPMX_DEVICE_NPM1300_ENG_B=y
+    harness: console
+    harness_config:
+      fixture: nPM1300_setup_eng_b
+      type: multi_line
+      ordered: true
+      regex:
+        -  "PMIC device OK."
+        -  "Voltage LDO1:"
+        -  "Voltage LDO2:"
+        -  "Test output voltage OK."
