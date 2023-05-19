@@ -1,0 +1,20 @@
+# The west manifest file (west.yml) for npmx-zephyr.
+
+manifest:
+  defaults:
+    remote: NordicSemiconductor
+
+  remotes:
+    - name: NordicSemiconductor
+      url-base: https://github.com/NordicSemiconductor
+    - name: zephyrproject
+      url-base: https://github.com/zephyrproject-rtos
+
+  projects:
+    - name: zephyr
+      revision: v3.3.0
+      import: true
+      remote: zephyrproject
+    - name: npmx
+      path: modules/npmx
+      revision: v0.6.0
