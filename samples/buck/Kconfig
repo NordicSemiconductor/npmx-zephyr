@@ -1,0 +1,27 @@
+#
+# Copyright (c) 2022 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
+
+mainmenu "BUCK sample"
+
+choice
+	bool "Testcase selection."
+	default TESTCASE_SET_BUCK_VOLTAGE
+
+config TESTCASE_SET_BUCK_VOLTAGE
+	bool "Set output voltage of BUCK1 (simple)."
+
+config TESTCASE_OUTPUT_VOLTAGE
+	bool "Set output voltage of BUCK1 (advanced)."
+
+config TESTCASE_RETENTION_VOLTAGE
+	bool "Set retention voltage of BUCK1 with selected external pin."
+
+config TESTCASE_ENABLE_BUCKS_USING_PIN
+	bool "Set enable mode of BUCK1 with selected external pin."
+
+endchoice
+
+source "Kconfig.zephyr"
