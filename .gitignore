@@ -29,9 +29,9 @@ map.yml
 hardware-map.yaml*
 coverage.info
 
-doc/_build
-doc/_samples/
+doc/build
 doc/*_warnings.txt
 doc/*_doc.log
+doc/samples
 
 **/version.conf

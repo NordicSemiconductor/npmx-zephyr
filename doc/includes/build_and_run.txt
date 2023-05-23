@@ -1,0 +1,4 @@
+
+This sample can be found under |sample path| in the `npmx-zephyr repository`_ folder structure.
+
+To build the sample with `zephyr`_, follow the steps listed on the `Building an Application`_ page in Zephyr documentation.
