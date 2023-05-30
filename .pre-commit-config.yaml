@@ -4,3 +4,32 @@ repos:
   hooks:
   - id: clang-format
     types_or: [c++, c]
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v2.3.0
+  hooks:
+  - id: end-of-file-fixer
+  - id: mixed-line-ending
+  - id: trailing-whitespace
+- repo: https://github.com/Lucas-C/pre-commit-hooks
+  rev: v1.5.1
+  hooks:
+  - id: insert-license
+    name: Add license for all C and C++ files
+    types_or: [c++, c]
+    args:
+      - --use-current-year
+      - --comment-style
+      - "/*| *| */"
+      - --license-filepath
+      - scripts/LICENSE-template.txt
+      - --fuzzy-match-generates-todo
+  - id: insert-license
+    name: Add license for all Kconfig files
+    files: \.(\.conf)|(Kconfig)|(\.sh)|(\.py)|(CMakeLists.txt)$
+    args:
+      - --use-current-year
+      - --comment-style
+      - "#|#|#"
+      - --license-filepath
+      - scripts/LICENSE-template.txt
+      - --fuzzy-match-generates-todo
