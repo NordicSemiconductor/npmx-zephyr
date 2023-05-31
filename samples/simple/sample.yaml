@@ -1,0 +1,21 @@
+sample:
+  description: Simple sample
+  name: Simple
+
+common:
+  integration_platforms:
+    - nrf5340dk_nrf5340_cpuapp
+    - nrf52840dk_nrf52840
+  platform_allow: nrf5340dk_nrf5340_cpuapp nrf52840dk_nrf52840
+  tags: pmic
+  timeout: 30
+
+tests:
+  sample.simple.eng_b:
+    extra_args: CONFIG_NPMX_DEVICE_NPM1300_ENG_B=y
+    harness: console
+    harness_config:
+      fixture: nPM1300_setup_eng_b
+      type: multi_line
+      regex:
+        - "PMIC device OK."
