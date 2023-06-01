@@ -4,6 +4,7 @@ repos:
   hooks:
   - id: clang-format
     types_or: [c++, c]
+    language: system
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v2.3.0
   hooks:
@@ -14,6 +15,7 @@ repos:
   rev: v1.5.1
   hooks:
   - id: insert-license
+    language: system
     name: Add license for all C and C++ files
     types_or: [c++, c]
     args:
@@ -24,6 +26,7 @@ repos:
       - scripts/LICENSE-template.txt
       - --fuzzy-match-generates-todo
   - id: insert-license
+    language: system
     name: Add license for all Kconfig files
     files: \.(\.conf)|(Kconfig)|(\.sh)|(\.py)|(CMakeLists.txt)$
     args:
@@ -36,14 +39,14 @@ repos:
 - repo: https://github.com/wilu-nordic/pre-commit-sphinx
   rev: 83a0d0fefdd566193d642ca28a8c4d042f714883
   hooks:
-    - id: build-docs
-      files: (\.(rst)$)|(^doc)
-      additional_dependencies: [PyYAML==5.4.1, sphinx-ncs-theme==0.6.2]
-      args:
-        - '--cache-dir'
-        - 'doc/build/doctrees'
-        - '--html-dir'
-        - 'doc/build/html'
-        - '--source-dir'
-        - 'doc'
-        - '--warnings-as-errors'
+  - id: build-docs
+    language: system
+    files: (\.(rst)$)|(^doc)
+    args:
+      - '--cache-dir'
+      - 'doc/build/doctrees'
+      - '--html-dir'
+      - 'doc/build/html'
+      - '--source-dir'
+      - 'doc'
+      - '--warnings-as-errors'
