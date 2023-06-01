@@ -33,3 +33,17 @@ repos:
       - --license-filepath
       - scripts/LICENSE-template.txt
       - --fuzzy-match-generates-todo
+- repo: https://github.com/wilu-nordic/pre-commit-sphinx
+  rev: 83a0d0fefdd566193d642ca28a8c4d042f714883
+  hooks:
+    - id: build-docs
+      files: (\.(rst)$)|(^doc)
+      additional_dependencies: [PyYAML==5.4.1, sphinx-ncs-theme==0.6.2]
+      args:
+        - '--cache-dir'
+        - 'doc/build/doctrees'
+        - '--html-dir'
+        - 'doc/build/html'
+        - '--source-dir'
+        - 'doc'
+        - '--warnings-as-errors'
