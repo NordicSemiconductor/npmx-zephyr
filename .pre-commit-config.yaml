@@ -1,21 +1,32 @@
+#
+# Copyright (c) 2023 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
+
 repos:
 - repo: https://github.com/pre-commit/mirrors-clang-format
   rev: v16.0.4
   hooks:
   - id: clang-format
     types_or: [c++, c]
+    language: system
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v2.3.0
   hooks:
   - id: end-of-file-fixer
+    language: python
   - id: mixed-line-ending
+    language: python
   - id: trailing-whitespace
+    language: python
 - repo: https://github.com/Lucas-C/pre-commit-hooks
   rev: v1.5.1
   hooks:
   - id: insert-license
+    language: python
     name: Add license for all C and C++ files
-    types_or: [c++, c]
+    files: \.(overlay|c|h)$
     args:
       - --use-current-year
       - --comment-style
@@ -24,8 +35,9 @@ repos:
       - scripts/LICENSE-template.txt
       - --fuzzy-match-generates-todo
   - id: insert-license
+    language: python
     name: Add license for all Kconfig files
-    files: \.(\.conf)|(Kconfig)|(\.sh)|(\.py)|(CMakeLists.txt)$
+    files: (CMakeLists.txt)|(Kconfig)|\.(conf|sh|py|yaml)$
     args:
       - --use-current-year
       - --comment-style
@@ -36,14 +48,15 @@ repos:
 - repo: https://github.com/wilu-nordic/pre-commit-sphinx
   rev: 83a0d0fefdd566193d642ca28a8c4d042f714883
   hooks:
-    - id: build-docs
-      files: (\.(rst)$)|(^doc)
-      additional_dependencies: [PyYAML==5.4.1, sphinx-ncs-theme==0.6.2]
-      args:
-        - '--cache-dir'
-        - 'doc/build/doctrees'
-        - '--html-dir'
-        - 'doc/build/html'
-        - '--source-dir'
-        - 'doc'
-        - '--warnings-as-errors'
+  - id: build-docs
+    language: python
+    files: (\.(rst)$)|(^doc)
+    additional_dependencies: [PyYAML==5.4.1, sphinx-ncs-theme==0.6.2]
+    args:
+      - '--cache-dir'
+      - 'doc/build/doctrees'
+      - '--html-dir'
+      - 'doc/build/html'
+      - '--source-dir'
+      - 'doc'
+      - '--warnings-as-errors'
