@@ -1,11 +1,13 @@
-.. _`Application Debugging`: https://docs.zephyrproject.org/latest/develop/application/index.html#application-debugging
 .. _`Application Configuration`: https://docs.zephyrproject.org/latest/develop/application/index.html#application-configuration
-.. _`How to connect with PuTTY`: https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/getting_started/testing.html#how-to-connect-with-putty
+.. _`Application Debugging`: https://docs.zephyrproject.org/latest/develop/application/index.html#application-debugging
 .. _`Building an Application`: https://docs.zephyrproject.org/latest/develop/application/index.html#building-an-application
-.. _`Zephyr Getting Started Guide`: https://docs.zephyrproject.org/latest/develop/getting_started/index.html
-.. _`npmx library`: https://github.com/NordicSemiconductor/npmx
-.. _`Nordic Semiconductor - nPM1300`: https://www.nordicsemi.com/Products/nPM1300
+.. _`How to connect with PuTTY`: https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/getting_started/testing.html#how-to-connect-with-putty
 .. _`Nordic Semiconductor - Power Management ICs`: https://www.nordicsemi.com/Products/Power-Management
+.. _`Nordic Semiconductor - nPM1300`: https://www.nordicsemi.com/Products/nPM1300
 .. _`Samples and Demos`: https://docs.zephyrproject.org/latest/samples/index.html
-.. _`npmx-zephyr repository`: https://github.com/NordicSemiconductor/npmx-zephyr
+.. _`Zephyr Getting Started Guide`: https://docs.zephyrproject.org/latest/develop/getting_started/index.html
 .. _`Zephyr`: https://zephyrproject.org/
+.. _`npmx drivers`: https://github.com/NordicSemiconductor/npmx/tree/main/drivers
+.. _`npmx library`: https://github.com/NordicSemiconductor/npmx
+.. _`npmx-zephyr repository`: https://github.com/NordicSemiconductor/npmx-zephyr
+.. _`Zephyr's west`: https://docs.zephyrproject.org/latest/develop/west/index.html
