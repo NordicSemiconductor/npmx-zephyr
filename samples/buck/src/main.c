@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Nordic Semiconductor ASA
+ * Copyright (c) 2022-2023 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -87,7 +87,13 @@ static void get_and_log_voltage(npmx_buck_t *p_buck)
 		LOG_ERR("Unable to get voltage status.");
 	}
 
-	LOG_INF("Voltage BUCK1: %u mV.", npmx_buck_voltage_convert_to_mv(buck_voltage));
+	uint32_t voltage_mv;
+
+	if (npmx_buck_voltage_convert_to_mv(buck_voltage, &voltage_mv)) {
+		LOG_INF("Voltage BUCK1: %u mV.", voltage_mv);
+	} else {
+		LOG_ERR("Unable to convert voltage value to mV.");
+	}
 }
 
 /**
