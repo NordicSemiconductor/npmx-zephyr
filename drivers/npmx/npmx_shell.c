@@ -55,7 +55,15 @@ static int cmd_charger_termination_voltage_normal_get(const struct shell *shell,
 		npmx_charger_termination_normal_voltage_get(charger_instance, &voltage);
 
 	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Value: %d mV.", npmx_charger_voltage_convert_to_mv(voltage));
+		uint32_t voltage_mv;
+
+		if (npmx_charger_voltage_convert_to_mv(voltage, &voltage_mv)) {
+			shell_print(shell, "Value: %d mV.", voltage_mv);
+		} else {
+			shell_error(
+				shell,
+				"Error: unable to convert battery normal termination voltage value to mV.");
+		}
 	} else {
 		shell_error(shell,
 			    "Error: unable to read battery normal termination voltage value.");
@@ -138,7 +146,15 @@ static int cmd_charger_termination_current_get(const struct shell *shell, size_t
 	npmx_error_t err_code = npmx_charger_termination_current_get(charger_instance, &current);
 
 	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Value: %d%%.", npmx_charger_iterm_convert_to_pct(current));
+		uint32_t current_pct;
+
+		if (npmx_charger_iterm_convert_to_pct(current, &current_pct)) {
+			shell_print(shell, "Value: %d%%.", current_pct);
+		} else {
+			shell_error(
+				shell,
+				"Error: unable to convert battery termination current value to pct.");
+		}
 	} else {
 		shell_error(shell, "Error: unable to read battery termination current value.");
 	}
@@ -448,10 +464,15 @@ static int cmd_charger_trickle_get(const struct shell *shell, size_t argc, char 
 	npmx_error_t err_code = npmx_charger_trickle_voltage_get(charger_instance, &voltage);
 
 	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Value: %d mV.", npmx_charger_trickle_convert_to_mv(voltage));
+		uint32_t voltage_mv;
+
+		if (npmx_charger_trickle_convert_to_mv(voltage, &voltage_mv)) {
+			shell_print(shell, "Value: %d mV.", voltage_mv);
+		} else {
+			shell_error(shell, "Error: unable to convert trickle voltage value to mV.");
+		}
 	} else {
-		shell_error(shell,
-			    "Error: unable to read battery normal termination voltage value.");
+		shell_error(shell, "Error: unable to read trickle voltage value.");
 	}
 
 	return 0;
@@ -482,11 +503,16 @@ static int cmd_charger_trickle_set(const struct shell *shell, size_t argc, char 
 		return 0;
 	}
 
+	uint32_t trickle_mv;
+
+	if (!npmx_charger_trickle_convert_to_mv(charger_trickle, &trickle_mv)) {
+		shell_error(shell, "Error: unable to convert trickle voltage value to mV.");
+	}
+
 	err_code = npmx_charger_trickle_voltage_set(charger_instance, charger_trickle);
 
 	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Success: %d mV.",
-			    npmx_charger_trickle_convert_to_mv(charger_trickle));
+		shell_print(shell, "Success: %d mV.", trickle_mv);
 	} else {
 		shell_error(shell, "Error: unable to set trickle voltage value.");
 	}
@@ -695,7 +721,13 @@ static int buck_voltage_get(const struct shell *shell, size_t argc, char **argv,
 	}
 
 	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Value: %d mV.", npmx_buck_voltage_convert_to_mv(voltage));
+		uint32_t voltage_mv;
+
+		if (npmx_buck_voltage_convert_to_mv(voltage, &voltage_mv)) {
+			shell_print(shell, "Value: %d mV.", voltage_mv);
+		} else {
+			shell_error(shell, "Error: unable to convert buck voltage value to mV.");
+		}
 	} else {
 		shell_error(shell, "Error: unable to read buck voltage.");
 	}
@@ -1336,7 +1368,13 @@ static int cmd_ldsw_ldo_voltage_get(const struct shell *shell, size_t argc, char
 	err_code = npmx_ldsw_ldo_voltage_get(ldsw_instance, &voltage);
 
 	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Value: %d mV.", npmx_ldsw_voltage_convert_to_mv(voltage));
+		uint32_t voltage_mv;
+
+		if (npmx_ldsw_voltage_convert_to_mv(voltage, &voltage_mv)) {
+			shell_print(shell, "Value: %d mV.", voltage_mv);
+		} else {
+			shell_error(shell, "Error: unable to convert LDO voltage value to mV.");
+		}
 	} else {
 		shell_error(shell, "Error: unable to read LDO voltage.");
 	}
@@ -1715,7 +1753,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_gpio,
 
 /* Creating subcommands (level 4 command) array for command "buck status power". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_status_power,
-			       SHELL_CMD(get, NULL, "Get buck power status", cmd_buck_status_power_get),
+			       SHELL_CMD(get, NULL, "Get buck power status",
+					 cmd_buck_status_power_get),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 3 command) array for command "buck status". */
