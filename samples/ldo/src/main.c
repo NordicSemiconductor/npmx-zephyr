@@ -22,13 +22,17 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 static void get_and_log_voltage(npmx_ldsw_t *p_ldsw)
 {
 	npmx_ldsw_voltage_t ldsw_voltage;
+	uint32_t voltage_mv;
 
 	if (npmx_ldsw_ldo_voltage_get(p_ldsw, &ldsw_voltage) != NPMX_SUCCESS) {
 		LOG_ERR("Unable to get voltage status.");
 	}
 
-	LOG_INF("Voltage LDO%d: %d mV.", (p_ldsw->hw_index + 1),
-		npmx_ldsw_voltage_convert_to_mv(ldsw_voltage));
+	if (npmx_ldsw_voltage_convert_to_mv(ldsw_voltage, &voltage_mv)) {
+		LOG_INF("Voltage LDO%d: %d mV.", (p_ldsw->hw_index + 1), voltage_mv);
+	} else {
+		LOG_ERR("Unable to convert voltage value to mV.");
+	}
 }
 
 /**
