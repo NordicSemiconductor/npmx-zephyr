@@ -64,7 +64,7 @@ void main(void)
 		return;
 	}
 
-	LOG_INF("PMIC device OK");
+	LOG_INF("PMIC device OK.");
 
 	/* Get the pointer to npmx device. */
 	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
