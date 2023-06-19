@@ -2,11 +2,11 @@
 
 manifest:
   defaults:
-    remote: NordicSemiconductor
+    remote: nrfconnect
 
   remotes:
-    - name: NordicSemiconductor
-      url-base: https://github.com/NordicSemiconductor
+    - name: nrfconnect
+      url-base: https://github.com/nrfconnect/
     - name: zephyrproject
       url-base: https://github.com/zephyrproject-rtos
 
