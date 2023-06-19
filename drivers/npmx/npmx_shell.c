@@ -240,7 +240,7 @@ static int cmd_charger_charging_current_set(const struct shell *shell, size_t ar
 	}
 
 	int err = 0;
-	uint16_t current = (uint16_t)shell_strtoul(argv[1], 0, &err);
+	uint16_t current = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT16_MAX);
 
 	if (err != 0) {
 		shell_error(shell, "Error: current has to be an integer.");
@@ -342,7 +342,7 @@ static int cmd_charger_module_set(const struct shell *shell, size_t argc, char *
 	}
 
 	int err = 0;
-	uint8_t charger_set = (uint8_t)shell_strtoul(argv[1], 0, &err);
+	uint8_t charger_set = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
 
 	if (err != 0) {
 		shell_error(shell, "Error: status has to be an integer.");
@@ -511,8 +511,8 @@ static int cmd_buck_set(const struct shell *shell, size_t argc, char **argv)
 	}
 
 	int err = 0;
-	uint8_t buck_indx = (uint8_t)shell_strtoul(argv[1], 0, &err);
-	uint8_t buck_set = (uint8_t)shell_strtoul(argv[2], 0, &err);
+	uint8_t buck_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
+	uint8_t buck_set = CLAMP(shell_strtoul(argv[2], 0, &err), 0, UINT8_MAX);
 
 	if (err != 0) {
 		shell_error(shell, "Error: instance index and status have to be integers.");
@@ -558,7 +558,7 @@ static int cmd_buck_vout_select_get(const struct shell *shell, size_t argc, char
 	}
 
 	int err = 0;
-	uint8_t buck_indx = (uint8_t)shell_strtoul(argv[1], 0, &err);
+	uint8_t buck_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
 
 	if (err != 0) {
 		shell_error(shell, "Error: buck instance has to be an integer.");
@@ -604,9 +604,9 @@ static int cmd_buck_vout_select_set(const struct shell *shell, size_t argc, char
 	}
 
 	int err = 0;
-	uint8_t buck_indx = (uint8_t)shell_strtoul(argv[1], 0, &err);
+	uint8_t buck_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
 	npmx_buck_vout_select_t selection =
-		(npmx_buck_vout_select_t)shell_strtoul(argv[2], 0, &err);
+		(npmx_buck_vout_select_t)CLAMP(shell_strtoul(argv[2], 0, &err), 0, UINT8_MAX);
 
 	if (err != 0) {
 		shell_error(shell, "Error: instance index and voltage must be integers.");
@@ -652,7 +652,7 @@ static int buck_voltage_get(const struct shell *shell, size_t argc, char **argv,
 	}
 
 	int err = 0;
-	uint8_t buck_indx = (uint8_t)shell_strtoul(argv[1], 0, &err);
+	uint8_t buck_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
 
 	if (err != 0) {
 		shell_error(shell, "Error: buck instance has to be an integer.");
@@ -721,7 +721,7 @@ static int buck_voltage_set(const struct shell *shell, size_t argc, char **argv,
 	}
 
 	int err = 0;
-	uint8_t buck_indx = (uint8_t)shell_strtoul(argv[1], 0, &err);
+	uint8_t buck_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
 	uint32_t buck_set = (uint32_t)shell_strtoul(argv[2], 0, &err);
 
 	if (err != 0) {
@@ -790,7 +790,7 @@ static int buck_gpio_get(const struct shell *shell, size_t argc, char **argv,
 	}
 
 	int err = 0;
-	uint8_t buck_indx = (uint8_t)shell_strtoul(argv[1], 0, &err);
+	uint8_t buck_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
 
 	if (err != 0) {
 		shell_error(shell, "Error: buck instance has to be an integer.");
@@ -850,7 +850,7 @@ static int buck_gpio_set(const struct shell *shell, size_t argc, char **argv,
 	}
 
 	int err = 0;
-	uint8_t buck_indx = (uint8_t)shell_strtoul(argv[1], 0, &err);
+	uint8_t buck_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
 	int gpio_indx = shell_strtol(argv[2], 0, &err);
 
 	npmx_buck_gpio_config_t gpio_config = {
@@ -966,7 +966,7 @@ static int cmd_buck_mode_set(const struct shell *shell, size_t argc, char **argv
 	}
 
 	int err = 0;
-	uint8_t buck_indx = (uint8_t)shell_strtoul(argv[1], 0, &err);
+	uint8_t buck_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
 	int buck_mode = shell_strtol(argv[2], 0, &err);
 
 	if (err != 0) {
@@ -1026,8 +1026,8 @@ static int cmd_ldsw_set(const struct shell *shell, size_t argc, char **argv)
 	}
 
 	int err = 0;
-	uint8_t ldsw_indx = (uint8_t)shell_strtoul(argv[1], 0, &err);
-	uint8_t ldsw_set = (uint8_t)shell_strtoul(argv[2], 0, &err);
+	uint8_t ldsw_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
+	uint8_t ldsw_set = CLAMP(shell_strtoul(argv[2], 0, &err), 0, UINT8_MAX);
 
 	if (err != 0) {
 		shell_error(shell, "Error: instance index and status have to be integers.");
@@ -1073,7 +1073,7 @@ static int cmd_ldsw_get(const struct shell *shell, size_t argc, char **argv)
 	}
 
 	int err = 0;
-	uint8_t ldsw_indx = (uint8_t)shell_strtoul(argv[1], 0, &err);
+	uint8_t ldsw_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
 
 	if (err != 0) {
 		shell_error(shell, "Error: instance index has to be an integer.");
@@ -1122,8 +1122,9 @@ static int cmd_ldsw_mode_set(const struct shell *shell, size_t argc, char **argv
 	}
 
 	int err = 0;
-	uint8_t ldsw_indx = (uint8_t)shell_strtoul(argv[1], 0, &err);
-	npmx_ldsw_mode_t mode = (npmx_ldsw_mode_t)shell_strtoul(argv[2], 0, &err);
+	uint8_t ldsw_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
+	npmx_ldsw_mode_t mode =
+		(npmx_ldsw_mode_t)(CLAMP(shell_strtoul(argv[2], 0, &err), 0, UINT8_MAX));
 
 	if (err != 0) {
 		shell_error(shell, "Error: LDSW instance index and LDSW mode must be integers.");
@@ -1182,7 +1183,7 @@ static int cmd_ldsw_mode_get(const struct shell *shell, size_t argc, char **argv
 	}
 
 	int err = 0;
-	uint8_t ldsw_indx = (uint8_t)shell_strtoul(argv[1], 0, &err);
+	uint8_t ldsw_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
 
 	if (err != 0) {
 		shell_error(shell, "Error: LDSW instance must be an integer.");
@@ -1224,7 +1225,7 @@ static int cmd_ldsw_ldo_voltage_set(const struct shell *shell, size_t argc, char
 	}
 
 	int err = 0;
-	uint8_t ldsw_indx = (uint8_t)shell_strtoul(argv[1], 0, &err);
+	uint8_t ldsw_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
 	uint32_t ldo_set = (uint32_t)shell_strtoul(argv[2], 0, &err);
 
 	if (err != 0) {
@@ -1271,7 +1272,7 @@ static int cmd_ldsw_ldo_voltage_get(const struct shell *shell, size_t argc, char
 	}
 
 	int err = 0;
-	uint8_t ldsw_indx = (uint8_t)shell_strtoul(argv[1], 0, &err);
+	uint8_t ldsw_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
 
 	if (err != 0) {
 		shell_error(shell, "Error: LDSW instance must be an integer.");
