@@ -17,4 +17,4 @@ manifest:
       remote: zephyrproject
     - name: npmx
       path: modules/npmx
-      revision: b3036928e0b5b31912b295ea3ecbea913a726580
+      revision: 519aefa121546465dfbf21d96ba33e8be7a067a7
