@@ -8,7 +8,7 @@
 
 manifest:
   defaults:
-    remote: NordicSemiconductor
+    remote: nrfconnect
 
   remotes:
     - name: NordicSemiconductor
