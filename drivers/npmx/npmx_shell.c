@@ -1264,10 +1264,24 @@ static int cmd_adc_ntc_set(const struct shell *shell, size_t argc, char **argv, 
 		return 0;
 	}
 
+	uint32_t modules_mask;
+	npmx_error_t err_code =
+		npmx_charger_module_get(npmx_charger_get(npmx_instance, 0), &modules_mask);
+
+	if (!check_error_code(shell, err_code)) {
+		shell_error(shell, "Error: unable to get charger module status.");
+		return 0;
+	}
+
+	if ((modules_mask & NPMX_CHARGER_MODULE_CHARGER_MASK) != 0) {
+		shell_error(shell, "Error: charger must be disabled to set ADC NTC value.");
+		return 0;
+	}
+
 	npmx_adc_t *adc_instance = npmx_adc_get(npmx_instance, 0);
 	npmx_adc_ntc_type_t type = (npmx_adc_ntc_type_t)data;
 
-	npmx_error_t err_code = npmx_adc_ntc_set(adc_instance, type);
+	err_code = npmx_adc_ntc_set(adc_instance, type);
 
 	if (check_error_code(shell, err_code)) {
 		shell_print(shell, "Success: %s.", argv[0]);
