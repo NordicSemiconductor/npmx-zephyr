@@ -946,6 +946,68 @@ static int cmd_buck_gpio_forced_pwm_set(const struct shell *shell, size_t argc, 
 	return buck_gpio_set(shell, argc, argv, npmx_buck_forced_pwm_gpio_config_set);
 }
 
+static int cmd_buck_mode_set(const struct shell *shell, size_t argc, char **argv)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	if (argc < 2) {
+		shell_error(shell, "Error: missing buck instance index and buck mode.");
+		return 0;
+	}
+
+	if (argc < 3) {
+		shell_error(shell, "Error: missing buck mode.");
+		return 0;
+	}
+
+	int err = 0;
+	uint8_t buck_indx = (uint8_t)shell_strtoul(argv[1], 0, &err);
+	int buck_mode = shell_strtol(argv[2], 0, &err);
+
+	if (err != 0) {
+		shell_error(shell, "Error: instance index and mode have to be integers.");
+		return 0;
+	}
+
+	if (buck_indx >= NPMX_PERIPH_BUCK_COUNT) {
+		shell_error(shell, "Error: Buck instance index is too high: no such instance.");
+		return 0;
+	}
+
+	npmx_buck_t *buck_instance = npmx_buck_get(npmx_instance, buck_indx);
+	npmx_buck_mode_t mode;
+
+	switch (buck_mode) {
+	case 0:
+		mode = NPMX_BUCK_MODE_AUTO;
+		break;
+	case 1:
+		mode = NPMX_BUCK_MODE_PFM;
+		break;
+	case 2:
+		mode = NPMX_BUCK_MODE_PWM;
+		break;
+	default:
+		shell_error(shell, "Error: Buck mode can be 0-AUTO, 1-PFM, 2-PWM.");
+		return 0;
+	}
+
+	npmx_error_t err_code = npmx_buck_converter_mode_set(buck_instance, mode);
+
+	if (check_error_code(shell, err_code)) {
+		shell_print(shell, "Success: %d.", buck_mode);
+	} else {
+		shell_error(shell, "Error: unable to set buck mode.");
+	}
+
+	return 0;
+}
+
 static int cmd_ldsw_set(const struct shell *shell, size_t argc, char **argv)
 {
 	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
@@ -1613,7 +1675,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	sub_buck, SHELL_CMD(set, NULL, "Enable or disable buck", cmd_buck_set),
 	SHELL_CMD(vout, &sub_buck_vout, "Buck output voltage reference source", NULL),
 	SHELL_CMD(voltage, &sub_buck_voltage, "Buck voltage", NULL),
-	SHELL_CMD(gpio, &sub_buck_gpio, "Buck GPIOs", NULL), SHELL_SUBCMD_SET_END);
+	SHELL_CMD(gpio, &sub_buck_gpio, "Buck GPIOs", NULL),
+	SHELL_CMD(mode, NULL, "Set buck mode", cmd_buck_mode_set), SHELL_SUBCMD_SET_END);
 
 /* Creating dictionary subcommands (level 3 command) array for command "sub_ldsw_mode". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_ldsw_mode,
