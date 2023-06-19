@@ -17,4 +17,4 @@ manifest:
       remote: zephyrproject
     - name: npmx
       path: modules/npmx
-      revision: v0.6.0
+      revision: pull/95/head
