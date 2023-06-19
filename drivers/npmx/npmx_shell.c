@@ -417,6 +417,16 @@ static int cmd_charger_module_recharge_get(const struct shell *shell, size_t arg
 	return cmd_charger_module_get(shell, argc, argv, NPMX_CHARGER_MODULE_RECHARGE_MASK);
 }
 
+static int cmd_charger_module_ntc_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return cmd_charger_module_set(shell, argc, argv, NPMX_CHARGER_MODULE_NTC_LIMITS_MASK);
+}
+
+static int cmd_charger_module_ntc_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return cmd_charger_module_get(shell, argc, argv, NPMX_CHARGER_MODULE_NTC_LIMITS_MASK);
+}
+
 static int cmd_charger_trickle_get(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
@@ -1486,10 +1496,19 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_charger_module_recharge,
 					 cmd_charger_module_recharge_get),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 4 command) array for command "charger module ntc". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_charger_module_ntc,
+			       SHELL_CMD(set, NULL, "Enable or disable NTC",
+					 cmd_charger_module_ntc_set),
+			       SHELL_CMD(get, NULL, "Get NTC status",
+					 cmd_charger_module_ntc_get),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating subcommands (level 3 command) array for command "charger module". */
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	sub_charger_module, SHELL_CMD(charger, &sub_charger_module_charger, "Charger module", NULL),
 	SHELL_CMD(recharge, &sub_charger_module_recharge, "Recharge module", NULL),
+	SHELL_CMD(ntc, &sub_charger_module_ntc, "NTC module", NULL),
 	SHELL_SUBCMD_SET_END);
 
 /* Creating dictionary subcommands (level 4 command) array for command "charger trickle set". */
