@@ -1404,6 +1404,29 @@ static int cmd_vbusin_status_connected_get(const struct shell *shell, size_t arg
 	return 0;
 }
 
+static int cmd_reset(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	npmx_error_t err_code = npmx_core_task_trigger(npmx_instance, NPMX_CORE_TASK_RESET);
+
+	if (check_error_code(shell, err_code)) {
+		shell_print(shell, "Success: restarting.");
+	} else {
+		shell_error(shell, "Error: unable to restart device.");
+	}
+
+	return 0;
+}
+
 /* Creating subcommands (level 4 command) array for command "charger termination_voltage normal". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_charger_termination_voltage_normal,
 			       SHELL_CMD(get, NULL, "Get charger normal termination voltage",
@@ -1652,6 +1675,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_npmx, SHELL_CMD(charger, &sub_charger, "Charg
 			       SHELL_CMD(adc, &sub_adc, "ADC", NULL),
 			       SHELL_CMD(errlog, &sub_errlog, "Reset errors logs", NULL),
 			       SHELL_CMD(vbusin, &sub_vbusin, "VBUSIN", NULL),
+			       SHELL_CMD(reset, NULL, "Restart device", cmd_reset),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating root (level 0) command "npmx" without a handler. */
