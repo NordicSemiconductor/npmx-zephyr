@@ -19,7 +19,7 @@ manifest:
       remote: zephyrproject
     - name: npmx
       path: modules/npmx
-      revision: 5cef629964b8acc39a255dc9a10eba54ba6151f0
+      revision: be41fe6dfd0660d4542bc45085926309545f728d
     - name: sdk-nrfxlib
       remote: nrfconnect
       revision: bb42c9c169177ff96b5f5b055b6c087679bfdcd3
