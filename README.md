@@ -84,7 +84,7 @@ pip install -r scripts/requirements.txt
 ### Build
 You can build the documentation in two ways:
 
-* Use the provided script `doc/sphinx_build_local.sh` and open the `doc/build/html/index.html` file to see the output.
+* Use the provided script `doc/generate_sphinx_doc.sh` and open the `doc/build/html/index.html` file to see the output.
 * Build it manually by going to the `doc` directory and running the following command:
 
     ```bash
