@@ -14,12 +14,23 @@
 import os
 from pathlib import Path
 import sys
+import glob
+import shutil
 
 # Paths ------------------------------------------------------------------------
 
 NPMX_ZEPHYR_BASE = Path(__file__).absolute().parents[1]
 
-ZEPHYR_BASE = Path(__file__).absolute().parents[2] / "zephyr"
+# Copy samples readmes
+src_dir = NPMX_ZEPHYR_BASE / "samples"
+dst_dir = NPMX_ZEPHYR_BASE / "doc" / "samples"
+
+if os.path.exists(dst_dir):
+    shutil.rmtree(dst_dir)
+
+for file in glob.glob(r'**/*.rst', root_dir=src_dir):
+    os.makedirs((dst_dir / file).parents[0])
+    shutil.copy(src_dir / file, dst_dir / file)
 
 # General configuration --------------------------------------------------------
 
@@ -32,7 +43,6 @@ author = 'Nordic Semiconductor'
 version = release = "0.6.0"
 
 sys.path.insert(0, str(NPMX_ZEPHYR_BASE / "doc" / "_extensions"))
-sys.path.insert(0, str(ZEPHYR_BASE / "doc" / "_extensions"))
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
@@ -40,7 +50,6 @@ sys.path.insert(0, str(ZEPHYR_BASE / "doc" / "_extensions"))
 
 extensions = [
     "table_from_rows",
-    "zephyr.external_content",
 ]
 
 rst_epilog = """
@@ -55,13 +64,6 @@ html_static_path = [str(NPMX_ZEPHYR_BASE / "doc" / "_static")]
 html_last_updated_fmt = "%b %d, %Y"
 html_show_sourcelink = True
 html_show_sphinx = False
-
-# Options for external_content -------------------------------------------------
-
-external_content_contents = [
-    (NPMX_ZEPHYR_BASE / "doc" , "*"),
-    (NPMX_ZEPHYR_BASE, "samples/**/*.rst"),
-]
 
 # Options for table_from_rows --------------------------------------------------
 
