@@ -7,6 +7,8 @@ manifest:
   remotes:
     - name: NordicSemiconductor
       url-base: https://github.com/NordicSemiconductor
+    - name: nrfconnect
+      url-base: https://github.com/nrfconnect
     - name: zephyrproject
       url-base: https://github.com/zephyrproject-rtos
 
@@ -17,7 +19,7 @@ manifest:
       remote: zephyrproject
     - name: npmx
       path: modules/npmx
-      revision: pull/112/head
+      revision: 5cef629964b8acc39a255dc9a10eba54ba6151f0
     - name: sdk-nrfxlib
       remote: nrfconnect
       revision: bb42c9c169177ff96b5f5b055b6c087679bfdcd3
