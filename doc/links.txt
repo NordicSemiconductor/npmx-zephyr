@@ -11,3 +11,5 @@
 .. _`npmx library`: https://github.com/NordicSemiconductor/npmx
 .. _`npmx-zephyr repository`: https://github.com/NordicSemiconductor/npmx-zephyr
 .. _`Zephyr's west`: https://docs.zephyrproject.org/latest/develop/west/index.html
+.. _`sdk-nrfxlib`: https://github.com/nrfconnect/sdk-nrfxlib
+.. _`nRF Fuel Gauge library`: https://github.com/nrfconnect/sdk-nrfxlib/tree/main/nrf_fuel_gauge
