@@ -17,11 +17,11 @@ config NPMX_INIT_PRIORITY
 
 choice
 	prompt "IC version"
-	default NPMX_DEVICE_NPM1300_ENG_B
+	default NPMX_DEVICE_NPM1300_ENG_C
 
-	config NPMX_DEVICE_NPM1300_ENG_B
+	config NPMX_DEVICE_NPM1300_ENG_C
 		depends on I2C && GPIO
-		bool "nPM1300 Engineering B"
+		bool "nPM1300 Engineering C"
 endchoice
 
 config NPMX_SHELL
