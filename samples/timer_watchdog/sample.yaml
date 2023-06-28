@@ -10,23 +10,23 @@ common:
   tags: pmic
 
 tests:
-  sample.timer.watchdog.simple.eng_b:
-    extra_args: CONFIG_NPMX_DEVICE_NPM1300_ENG_B=y
+  sample.timer.watchdog.simple.eng_c:
+    extra_args: CONFIG_NPMX_DEVICE_NPM1300_ENG_C=y
     timeout: 30
     harness: console
     harness_config:
-      fixture: nPM1300_setup_eng_b
+      fixture: nPM1300_setup_eng_c
       type: multi_line
       ordered: true
       regex:
         - "PMIC device OK."
         - "Watchdog is being kicked, press any key to stop it."
 
-  sample.timer.watchdog.advanced.eng_b:
-    extra_args: CONFIG_NPMX_DEVICE_NPM1300_ENG_B=y
+  sample.timer.watchdog.advanced.eng_c:
+    extra_args: CONFIG_NPMX_DEVICE_NPM1300_ENG_C=y
     harness: console
     harness_config:
-      fixture: nPM1300_setup_and_manual_action_eng_b
+      fixture: nPM1300_setup_and_manual_action_eng_c
       type: multi_line
       ordered: true
       regex:

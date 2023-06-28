@@ -11,12 +11,12 @@ common:
   timeout: 30
 
 tests:
-  sample.ldsw.sw_enable.eng_b:
+  sample.ldsw.sw_enable.eng_c:
     extra_args: CONFIG_TESTCASE_SW_ENABLE=y
-                CONFIG_NPMX_DEVICE_NPM1300_ENG_B=y
+                CONFIG_NPMX_DEVICE_NPM1300_ENG_C=y
     harness: console
     harness_config:
-      fixture: nPM1300_setup_eng_b
+      fixture: nPM1300_setup_eng_c
       type: multi_line
       ordered: true
       regex:
@@ -24,12 +24,12 @@ tests:
         - "Test enable LDSW with software."
         - "Test enable LDSW with software OK."
 
-  sample.ldsw.gpio_enable.eng_b:
+  sample.ldsw.gpio_enable.eng_c:
     extra_args: CONFIG_TESTCASE_GPIO_ENABLE=y
-                CONFIG_NPMX_DEVICE_NPM1300_ENG_B=y
+                CONFIG_NPMX_DEVICE_NPM1300_ENG_C=y
     harness: console
     harness_config:
-      fixture: nPM1300_setup_eng_b
+      fixture: nPM1300_setup_eng_c
       type: multi_line
       ordered: true
       regex:
