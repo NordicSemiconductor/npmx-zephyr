@@ -7,8 +7,8 @@
 zephyr_library()
 
 # One of NPMX devices have to be selected in Kconfig
-if(CONFIG_NPMX_DEVICE_NPM1300_ENG_B)
-    zephyr_compile_definitions(NPM1300_ENG_B)
+if(CONFIG_NPMX_DEVICE_NPM1300_ENG_C)
+    zephyr_compile_definitions(NPM1300_ENG_C)
     set(NPMX_BACKEND_TYPE "twim")
 else()
     return()
