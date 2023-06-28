@@ -1,0 +1,197 @@
+#
+# Copyright (c) 2023 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
+
+mainmenu "Fuel Gauge example"
+	choice
+		prompt "VBUSIN current limit"
+		default CURRENT_LIMIT_500
+
+		config CURRENT_LIMIT_100
+			bool "100 mA"
+		config CURRENT_LIMIT_500
+			bool "500 mA"
+		config CURRENT_LIMIT_600
+			bool "600 mA"
+		config CURRENT_LIMIT_700
+			bool "700 mA"
+		config CURRENT_LIMIT_800
+			bool "800 mA"
+		config CURRENT_LIMIT_900
+			bool "900 mA"
+		config CURRENT_LIMIT_1000
+			bool "1000 mA"
+		config CURRENT_LIMIT_1100
+			bool "1100 mA"
+		config CURRENT_LIMIT_1200
+			bool "1200 mA"
+		config CURRENT_LIMIT_1300
+			bool "1300 mA"
+		config CURRENT_LIMIT_1400
+			bool "1400 mA"
+		config CURRENT_LIMIT_1500
+			bool "1500 mA"
+	endchoice
+
+	config CURRENT_LIMIT
+		int
+		default 100 if CURRENT_LIMIT_100
+		default 500 if CURRENT_LIMIT_500
+		default 600 if CURRENT_LIMIT_600
+		default 700 if CURRENT_LIMIT_700
+		default 800 if CURRENT_LIMIT_800
+		default 900 if CURRENT_LIMIT_900
+		default 1000 if CURRENT_LIMIT_1000
+		default 1100 if CURRENT_LIMIT_1100
+		default 1200 if CURRENT_LIMIT_1200
+		default 1300 if CURRENT_LIMIT_1300
+		default 1400 if CURRENT_LIMIT_1400
+		default 1500 if CURRENT_LIMIT_1500
+
+	menu "Battery configuration"
+		config CHARGING_CURRENT
+			int "Battery charging current (in milliamperes)"
+			help
+				Available range is 32 mA to 800 mA in 2 mA steps.
+				The value specified will be rounded down to the closest implemented value.
+			range 32 800
+			default 150
+
+		config DISCHARGING_CURRENT
+			int "Battery discharge current limit (in milliamperes)"
+			help
+				Available range is 270 mA to 1340 mA in 3.23 mA steps.
+				The value specified will be rounded down to the closest implemented value.
+			range 270 1340
+			default 1000
+
+		choice
+			prompt "Battery termination voltage in normal temperature"
+			default TERM_NORMAL_4150
+
+			config TERM_NORMAL_3500
+				bool "3.50 V"
+			config TERM_NORMAL_3550
+				bool "3.55 V"
+			config TERM_NORMAL_3600
+				bool "3.60 V"
+			config TERM_NORMAL_3650
+				bool "3.65 V"
+			config TERM_NORMAL_4000
+				bool "4.00 V"
+			config TERM_NORMAL_4050
+				bool "4.05 V"
+			config TERM_NORMAL_4100
+				bool "4.10 V"
+			config TERM_NORMAL_4150
+				bool "4.15 V"
+			config TERM_NORMAL_4200
+				bool "4.20 V"
+			config TERM_NORMAL_4250
+				bool "4.25 V"
+			config TERM_NORMAL_4300
+				bool "4.30 V"
+			config TERM_NORMAL_4350
+				bool "4.35 V"
+			config TERM_NORMAL_4400
+				bool "4.40 V"
+			config TERM_NORMAL_4450
+				bool "4.45 V"
+		endchoice
+
+		config TERMINATION_VOLTAGE_NORMAL
+			int
+			default 3500 if TERM_NORMAL_3500
+			default 3550 if TERM_NORMAL_3550
+			default 3600 if TERM_NORMAL_3600
+			default 3650 if TERM_NORMAL_3650
+			default 4000 if TERM_NORMAL_4000
+			default 4050 if TERM_NORMAL_4050
+			default 4100 if TERM_NORMAL_4100
+			default 4150 if TERM_NORMAL_4150
+			default 4200 if TERM_NORMAL_4200
+			default 4250 if TERM_NORMAL_4250
+			default 4300 if TERM_NORMAL_4300
+			default 4350 if TERM_NORMAL_4350
+			default 4400 if TERM_NORMAL_4400
+			default 4450 if TERM_NORMAL_4450
+
+		choice
+			prompt "Battery termination voltage in warm temperature"
+			default TERM_WARM_4000
+
+			config TERM_WARM_3500
+				bool "3.50 V"
+			config TERM_WARM_3550
+				bool "3.55 V"
+			config TERM_WARM_3600
+				bool "3.60 V"
+			config TERM_WARM_3650
+				bool "3.65 V"
+			config TERM_WARM_4000
+				bool "4.00 V"
+			config TERM_WARM_4050
+				bool "4.05 V"
+			config TERM_WARM_4100
+				bool "4.10 V"
+			config TERM_WARM_4150
+				bool "4.15 V"
+			config TERM_WARM_4200
+				bool "4.20 V"
+			config TERM_WARM_4250
+				bool "4.25 V"
+			config TERM_WARM_4300
+				bool "4.30 V"
+			config TERM_WARM_4350
+				bool "4.35 V"
+			config TERM_WARM_4400
+				bool "4.40 V"
+			config TERM_WARM_4450
+				bool "4.45 V"
+		endchoice
+
+		config TERMINATION_VOLTAGE_WARM
+			int
+			default 3500 if TERM_WARM_3500
+			default 3550 if TERM_WARM_3550
+			default 3600 if TERM_WARM_3600
+			default 3650 if TERM_WARM_3650
+			default 4000 if TERM_WARM_4000
+			default 4050 if TERM_WARM_4050
+			default 4100 if TERM_WARM_4100
+			default 4150 if TERM_WARM_4150
+			default 4200 if TERM_WARM_4200
+			default 4250 if TERM_WARM_4250
+			default 4300 if TERM_WARM_4300
+			default 4350 if TERM_WARM_4350
+			default 4400 if TERM_WARM_4400
+			default 4450 if TERM_WARM_4450
+	endmenu
+
+    menu "Thermistor configuration"
+        choice
+            prompt "Thermistor nominal resistance in Ohms"
+            default RES_10000
+
+            config RES_10000
+                bool "10 kOhm"
+            config RES_47000
+                bool "47 kOhm"
+            config RES_100000
+                bool "100 kOhm"
+        endchoice
+
+        config THERMISTOR_RESISTANCE
+            int
+            default 10000 if RES_10000
+	        default 47000 if RES_47000
+	        default 100000 if RES_100000
+
+        config THERMISTOR_BETA
+            int "Thermistor beta value"
+            default 3380
+    endmenu
+
+source "Kconfig.zephyr"

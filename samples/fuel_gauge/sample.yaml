@@ -1,0 +1,29 @@
+#
+# Copyright (c) 2023 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
+
+sample:
+  description: Fuel gauge sample
+  name: Fuel gauge
+
+common:
+  integration_platforms:
+    - nrf5340dk_nrf5340_cpuapp
+    - nrf52840dk_nrf52840
+  platform_allow: nrf5340dk_nrf5340_cpuapp nrf52840dk_nrf52840
+  tags: pmic
+
+tests:
+  sample.fuel_gauge.eng_c:
+    extra_args: CONFIG_NPMX_DEVICE_NPM1300_ENG_C=y
+    harness: console
+    harness_config:
+      fixture: nPM1300_with_battery_setup_eng_c
+      type: multi_line
+      ordered: false
+      regex:
+        - "PMIC device OK."
+        - "Fuel gauge OK."
+        - "V: .+, I: .+, T: .+, SoC: .+, TTE: .+, TTF: .+"

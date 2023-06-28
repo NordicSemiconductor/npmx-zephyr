@@ -1,0 +1,109 @@
+/*
+ * Copyright (c) 2023 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+#include <zephyr/logging/log.h>
+#include <zephyr/kernel.h>
+#include <npmx_driver.h>
+#include "nrf_fuel_gauge.h"
+#include "fuel_gauge.h"
+#include <math.h>
+
+#define LOG_MODULE_NAME fuel_gauge
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
+
+static const struct battery_model battery_model = {
+#include "battery_model.inc"
+};
+
+static float max_charge_current;
+static float term_charge_current;
+static int64_t ref_time;
+
+static int read_sensors(npmx_instance_t *const p_pm, float *voltage, float *current, float *temp)
+{
+	npmx_adc_t *adc_instance = npmx_adc_get(p_pm, 0);
+	npmx_adc_meas_all_t meas;
+
+	if (npmx_adc_meas_all_get(adc_instance, &meas) != NPMX_SUCCESS) {
+		LOG_ERR("Reading ADC measurements failed.");
+		return -EIO;
+	}
+
+	if (npmx_adc_task_trigger(adc_instance, NPMX_ADC_TASK_SINGLE_SHOT_VBAT) != NPMX_SUCCESS) {
+		LOG_ERR("Triggering VBAT measurement failed.");
+		return -EIO;
+	}
+
+	if (npmx_adc_task_trigger(adc_instance, NPMX_ADC_TASK_SINGLE_SHOT_NTC) != NPMX_SUCCESS) {
+		LOG_ERR("Triggering NTC measurement failed.");
+		return -EIO;
+	}
+
+	/* Convert current in milliamperes to current in amperes. */
+	*current = (float)meas.values[NPMX_ADC_MEAS_VBAT2_IBAT] / 1000.0f;
+
+	/* Calculate temperature based on the NTC resistance value. Equations taken from datasheet. */
+	int32_t code = (meas.values[NPMX_ADC_MEAS_NTC] * NPMX_PERIPH_ADC_BITS_RESOLUTION) /
+		       (CONFIG_THERMISTOR_RESISTANCE + meas.values[NPMX_ADC_MEAS_NTC]);
+	float log_result = log(((float)NPMX_PERIPH_ADC_BITS_RESOLUTION / (float)code) - 1);
+	float inv_temp_k = (1.f / 298.15f) - (log_result / (float)CONFIG_THERMISTOR_BETA);
+	*temp = (1.f / inv_temp_k) - 273.15f;
+
+	/* Convert voltage in millivolts to voltage in volts. */
+	*voltage = (float)meas.values[NPMX_ADC_MEAS_VBAT] / 1000.0f;
+
+	return 0;
+}
+
+int fuel_gauge_init(npmx_instance_t *const p_pm)
+{
+	struct nrf_fuel_gauge_init_parameters parameters = { .model = &battery_model };
+	int ret;
+
+	ret = read_sensors(p_pm, &parameters.v0, &parameters.i0, &parameters.t0);
+	if (ret < 0) {
+		return ret;
+	}
+
+	/* Store charge nominal and termination current, needed for ttf calculation */
+	max_charge_current = CONFIG_CHARGING_CURRENT / 1000.0f;
+	term_charge_current = max_charge_current / 10.f;
+
+	nrf_fuel_gauge_init(&parameters, NULL);
+
+	ref_time = k_uptime_get();
+
+	return 0;
+}
+
+int fuel_gauge_update(npmx_instance_t *const p_pm)
+{
+	float voltage;
+	float current;
+	float temp;
+	float soc;
+	float tte;
+	float ttf;
+	float delta;
+	int ret;
+
+	ret = read_sensors(p_pm, &voltage, &current, &temp);
+	if (ret < 0) {
+		LOG_ERR("Error: Could not read data from charger device.");
+		return ret;
+	}
+
+	delta = (float)k_uptime_delta(&ref_time) / 1000.f;
+
+	soc = nrf_fuel_gauge_process(voltage, current, temp, delta, NULL);
+	tte = nrf_fuel_gauge_tte_get();
+	ttf = nrf_fuel_gauge_ttf_get(-max_charge_current, -term_charge_current);
+
+	LOG_INF("V: %.3f, I: %.3f, T: %.2f, SoC: %.2f, TTE: %.0f, TTF: %.0f", voltage, current,
+		temp, soc, tte, ttf);
+
+	return 0;
+}
