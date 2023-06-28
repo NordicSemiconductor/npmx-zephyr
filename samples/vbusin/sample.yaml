@@ -11,11 +11,11 @@ common:
   timeout: 30
 
 tests:
-  sample.vbusin.eng_b:
-    extra_args: CONFIG_NPMX_DEVICE_NPM1300_ENG_B=y
+  sample.vbusin.eng_c:
+    extra_args: CONFIG_NPMX_DEVICE_NPM1300_ENG_C=y
     harness: console
     harness_config:
-      fixture: nPM1300_setup_eng_b
+      fixture: nPM1300_setup_eng_c
       type: multi_line
       ordered: true
       regex:

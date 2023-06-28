@@ -10,11 +10,11 @@ common:
   tags: pmic
 
 tests:
-  sample.charger_and_events.eng_b:
-    extra_args: CONFIG_NPMX_DEVICE_NPM1300_ENG_B=y
+  sample.charger_and_events.eng_c:
+    extra_args: CONFIG_NPMX_DEVICE_NPM1300_ENG_C=y
     harness: console
     harness_config:
-      fixture: nPM1300_with_battery_setup_eng_b
+      fixture: nPM1300_with_battery_setup_eng_c
       type: multi_line
       ordered: false
       regex:
