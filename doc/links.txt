@@ -13,3 +13,5 @@
 .. _`Zephyr Getting Started Guide`: https://docs.zephyrproject.org/latest/develop/getting_started/index.html
 .. _`Zephyr`: https://zephyrproject.org/
 .. _`Zephyr's west`: https://docs.zephyrproject.org/latest/develop/west/index.html
+.. _`sdk-nrfxlib`: https://github.com/nrfconnect/sdk-nrfxlib
+.. _`nRF Fuel Gauge library`: https://github.com/nrfconnect/sdk-nrfxlib/tree/main/nrf_fuel_gauge
