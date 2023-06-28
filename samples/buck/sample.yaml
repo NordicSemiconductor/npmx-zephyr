@@ -11,12 +11,12 @@ common:
   timeout: 30
 
 tests:
-  sample.buck.set_buck_voltage_eng_b:
+  sample.buck.set_buck_voltage_eng_c:
     extra_args: CONFIG_TESTCASE_SET_BUCK_VOLTAGE=y
-                CONFIG_NPMX_DEVICE_NPM1300_ENG_B=y
+                CONFIG_NPMX_DEVICE_NPM1300_ENG_C=y
     harness: console
     harness_config:
-      fixture: nPM1300_setup_eng_b
+      fixture: nPM1300_setup_eng_c
       type: multi_line
       ordered: true
       regex:
@@ -24,12 +24,12 @@ tests:
         - "Test setting buck voltage."
         - "Test setting buck voltage OK."
 
-  sample.buck.output_voltage_eng_b:
+  sample.buck.output_voltage_eng_c:
     extra_args: CONFIG_TESTCASE_OUTPUT_VOLTAGE=y
-                CONFIG_NPMX_DEVICE_NPM1300_ENG_B=y
+                CONFIG_NPMX_DEVICE_NPM1300_ENG_C=y
     harness: console
     harness_config:
-      fixture: nPM1300_setup_eng_b
+      fixture: nPM1300_setup_eng_c
       type: multi_line
       ordered: true
       regex:
@@ -38,12 +38,12 @@ tests:
         - "Voltage BUCK1:"
         - "Test output voltage OK."
 
-  sample.buck.retention_voltage_eng_b:
+  sample.buck.retention_voltage_eng_c:
     extra_args: CONFIG_TESTCASE_RETENTION_VOLTAGE=y
-                CONFIG_NPMX_DEVICE_NPM1300_ENG_B=y
+                CONFIG_NPMX_DEVICE_NPM1300_ENG_C=y
     harness: console
     harness_config:
-      fixture: nPM1300_setup_eng_b
+      fixture: nPM1300_setup_eng_c
       type: multi_line
       ordered: true
       regex:
@@ -51,12 +51,12 @@ tests:
         - "Test retention voltage."
         - "Test retention voltage OK."
 
-  sample.buck.enable_bucks_using_pin_eng_b:
+  sample.buck.enable_bucks_using_pin_eng_c:
     extra_args: CONFIG_TESTCASE_ENABLE_BUCKS_USING_PIN=y
-                CONFIG_NPMX_DEVICE_NPM1300_ENG_B=y
+                CONFIG_NPMX_DEVICE_NPM1300_ENG_C=y
     harness: console
     harness_config:
-      fixture: nPM1300_setup_eng_b
+      fixture: nPM1300_setup_eng_c
       type: multi_line
       ordered: true
       regex:
