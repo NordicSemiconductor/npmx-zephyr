@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Nordic Semiconductor
+# Copyright (c) 2023 Nordic Semiconductor ASA
 #
 # SPDX-License-Identifier: BSD-3-Clause
 #
@@ -11,3 +11,4 @@ set(CONF_FILE_BUILD_TYPE ${CONF_FILE_BUILD_TYPE} CACHE INTERNAL "The build type"
 zephyr_include_directories(include)
 
 add_subdirectory(drivers)
+add_subdirectory(modules)
