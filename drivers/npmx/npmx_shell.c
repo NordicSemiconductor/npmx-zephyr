@@ -27,6 +27,9 @@ static bool check_error_code(const struct shell *shell, npmx_error_t err_code)
 		shell_error(shell, "Error: IO error.");
 		return false;
 	}
+	case NPMX_ERROR_INVALID_MEAS:
+		shell_error(shell, "Error: invalid measurement.");
+		return false;
 	}
 
 	return false;
@@ -1427,7 +1430,7 @@ static int cmd_adc_meas_take_vbat(const struct shell *shell, size_t argc, char *
 		return 0;
 	}
 
-	uint16_t battery_voltage_millivolts;
+	int32_t battery_voltage_millivolts;
 	bool meas_ready = false;
 
 	err_code = NPMX_ERROR_INVALID_PARAM;
@@ -1604,16 +1607,14 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_charger_module_recharge,
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_charger_module_ntc,
 			       SHELL_CMD(set, NULL, "Enable or disable NTC",
 					 cmd_charger_module_ntc_set),
-			       SHELL_CMD(get, NULL, "Get NTC status",
-					 cmd_charger_module_ntc_get),
+			       SHELL_CMD(get, NULL, "Get NTC status", cmd_charger_module_ntc_get),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 3 command) array for command "charger module". */
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	sub_charger_module, SHELL_CMD(charger, &sub_charger_module_charger, "Charger module", NULL),
 	SHELL_CMD(recharge, &sub_charger_module_recharge, "Recharge module", NULL),
-	SHELL_CMD(ntc, &sub_charger_module_ntc, "NTC module", NULL),
-	SHELL_SUBCMD_SET_END);
+	SHELL_CMD(ntc, &sub_charger_module_ntc, "NTC module", NULL), SHELL_SUBCMD_SET_END);
 
 /* Creating dictionary subcommands (level 4 command) array for command "charger trickle set". */
 SHELL_SUBCMD_DICT_SET_CREATE(charger_trickle_type, cmd_charger_trickle_set,
