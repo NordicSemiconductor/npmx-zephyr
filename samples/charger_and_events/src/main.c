@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Nordic Semiconductor ASA
+ * Copyright (c) 2022-2023 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -208,8 +208,8 @@ static void vbusin_callback(npmx_instance_t *p_pm, npmx_callback_type_t type, ui
 static void adc_callback(npmx_instance_t *p_pm, npmx_callback_type_t type, uint8_t mask)
 {
 	if ((mask & (uint8_t)NPMX_EVENT_GROUP_ADC_BAT_READY_MASK)) {
-		static uint16_t battery_voltage_millivolts_last;
-		uint16_t battery_voltage_millivolts;
+		static uint32_t battery_voltage_millivolts_last;
+		int32_t battery_voltage_millivolts;
 
 		if (npmx_adc_meas_get(npmx_adc_get(p_pm, 0), NPMX_ADC_MEAS_VBAT,
 				      &battery_voltage_millivolts) == NPMX_SUCCESS) {
