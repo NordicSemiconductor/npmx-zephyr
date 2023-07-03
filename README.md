@@ -56,6 +56,10 @@ As a result, you should see LEDs blinking on the board.
 >export ZEPHYR_BASE=<path_to_zephyr_directory>
 >```
 
+If you want to create a custom application, refer to the following guidelines:
+- [npmx Github repository][npmx_repo] for API usage
+- [nPM1300 documentation][nPM1300_documentation] for the required setup configuration
+
 ## Directories
 ```
 .
@@ -104,6 +108,7 @@ pre-commit uninstall
 ```
 
 [doc_dir]: doc
+[nPM1300_documentation]: https://infocenter.nordicsemi.com/index.jsp?topic=%2Fstruct_pmic%2Fstruct%2Fnpm1300.html
 [led_readme]: samples/led/README.rst
 [npmx_drivers]: https://github.com/NordicSemiconductor/npmx
 [npmx_repo]: https://github.com/NordicSemiconductor/npmx-zephyr
