@@ -91,6 +91,10 @@ As a result, you should see LEDs blinking on the board.
 
       export ZEPHYR_BASE=<path_to_zephyr_directory>
 
+If you want to create a custom application, refer to the following guidelines:
+- `npmx Github repository`_ for API usage
+- `nPM1300 documentation`_ for the required setup configuration
+
 Generating documentation
 ========================
 
