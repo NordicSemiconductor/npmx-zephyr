@@ -267,6 +267,10 @@ static int cmd_charger_charging_current_set(const struct shell *shell, size_t ar
 	err_code = npmx_charger_charging_current_set(charger_instance, current);
 	if (check_error_code(shell, err_code)) {
 		shell_print(shell, "Success: %s mA.", argv[1]);
+	} else if (err_code == NPMX_ERROR_INVALID_PARAM) {
+		shell_error(
+			shell,
+			"Error: wrong current value, it should be in range 32 to 800 with a step of 2.");
 	} else {
 		shell_error(shell, "Error: unable to set charging current value.");
 	}
@@ -856,8 +860,15 @@ static int buck_gpio_set(const struct shell *shell, size_t argc, char **argv,
 	uint8_t buck_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
 	int gpio_indx = shell_strtol(argv[2], 0, &err);
 
+	uint8_t gpio_inv = CLAMP(shell_strtoul(argv[3], 0, &err), 0, UINT8_MAX);
+
+	if ((gpio_inv != 0) && (gpio_inv != 1)) {
+		shell_error(shell, "Error: GPIO inv state has to be either 0 or 1.");
+		return 0;
+	}
+
 	npmx_buck_gpio_config_t gpio_config = {
-		.inverted = !!shell_strtoul(argv[3], 0, &err),
+		.inverted = !!gpio_inv,
 	};
 
 	if (err != 0) {
