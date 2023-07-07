@@ -1,23 +1,31 @@
+#
+# Copyright (c) 2023 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
+
 # The west manifest file (west.yml) for npmx-zephyr.
 
 manifest:
   defaults:
-    remote: nrfconnect
+    remote: NordicSemiconductor
 
   remotes:
+    - name: NordicSemiconductor
+      url-base: https://github.com/NordicSemiconductor
     - name: nrfconnect
       url-base: https://github.com/nrfconnect
     - name: zephyrproject
       url-base: https://github.com/zephyrproject-rtos
 
   projects:
+    - name: npmx
+      path: modules/npmx
+      revision: v0.6.0
     - name: zephyr
       revision: v3.3.0
       import: true
       remote: zephyrproject
-    - name: npmx
-      path: modules/npmx
-      revision: ba95a4e8a5e5ba7abbb8d3ffee277fbd0a26385d
     - name: sdk-nrfxlib
       remote: nrfconnect
       revision: bb42c9c169177ff96b5f5b055b6c087679bfdcd3
