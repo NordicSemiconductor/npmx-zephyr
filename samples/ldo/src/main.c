@@ -37,7 +37,7 @@ static void get_and_log_voltage(npmx_ldsw_t *p_ldsw)
 
 /**
  * @brief Function for testing LDO voltage range,
- *        from start_voltage to stop_voltage with 100 mV step every one second.
+ *        from start_voltage to stop_voltage with 100 mV step every 100 miliseconds.
  *
  * @param[in] p_ldsw        Pointer to the instance of the LDO.
  * @param[in] start_voltage Start test voltage level.
@@ -53,7 +53,7 @@ static void verify_ldsw_voltage(npmx_ldsw_t *p_ldsw, npmx_ldsw_voltage_t start_v
 		get_and_log_voltage(p_ldsw);
 
 		/* Wait some time for the output voltage to stabilize, and measure it. */
-		k_msleep(1000);
+		k_msleep(100);
 	}
 }
 
