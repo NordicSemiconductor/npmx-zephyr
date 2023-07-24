@@ -592,6 +592,78 @@ static int cmd_die_temp_resume_set(const struct shell *shell, size_t argc, char 
 	return 0;
 }
 
+static int cmd_die_temp_stop_get(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	npmx_charger_t *charger_instance = npmx_charger_get(npmx_instance, 0);
+	uint16_t temperature;
+
+	npmx_error_t err_code = npmx_charger_die_temp_stop_get(charger_instance, &temperature);
+
+	if (check_error_code(shell, err_code)) {
+		shell_print(shell, "Temperature threshold: %d *C.", temperature);
+	} else {
+		shell_error(shell, "Error: unable to read die temperature stop threshold.");
+	}
+
+	return 0;
+}
+
+static int cmd_die_temp_stop_set(const struct shell *shell, size_t argc, char **argv)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	if (argc < 2) {
+		shell_error(shell, "Error: missing die temperature stop threshold value.");
+		return 0;
+	}
+
+	int err = 0;
+	uint16_t temperature = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT16_MAX);
+
+	if (err != 0) {
+		shell_error(shell, "Error: temperature has to be an integer.");
+		return 0;
+	}
+
+	npmx_charger_t *charger_instance = npmx_charger_get(npmx_instance, 0);
+	uint32_t modules_mask;
+	npmx_error_t err_code = npmx_charger_module_get(charger_instance, &modules_mask);
+
+	if (!check_error_code(shell, err_code)) {
+		shell_error(shell, "Error: unable to get charger module status.");
+		return 0;
+	}
+
+	if ((modules_mask & NPMX_CHARGER_MODULE_CHARGER_MASK) != 0) {
+		shell_error(shell, "Error: charger must be disabled to set threshold value.");
+		return 0;
+	}
+
+	err_code = npmx_charger_die_temp_stop_set(charger_instance, temperature);
+	if (check_error_code(shell, err_code)) {
+		shell_print(shell, "Success: %d *C.", temperature);
+	} else {
+		shell_error(shell, "Error: unable to read die temperature stop threshold.");
+	}
+
+	return 0;
+}
+
 static int cmd_buck_set(const struct shell *shell, size_t argc, char **argv)
 {
 	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
@@ -1739,6 +1811,16 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_charger_trickle,
 					 NULL),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 4 command) array for command "charger die_temp stop". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_die_temp_stop,
+			       SHELL_CMD(get, NULL,
+					 "Get die temperature threshold for stop charging",
+					 cmd_die_temp_stop_get),
+			       SHELL_CMD(set, NULL,
+					 "Set die temperature threshold for stop charging",
+					 cmd_die_temp_stop_set),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating subcommands (level 4 command) array for command "charger die_temp resume". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_die_temp_resume,
 			       SHELL_CMD(get, NULL,
@@ -1753,6 +1835,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_die_temp_resume,
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_die_temp,
 			       SHELL_CMD(resume, &sub_die_temp_resume,
 					 "Die temperature threshold where charging resumes", NULL),
+			       SHELL_CMD(stop, &sub_die_temp_stop,
+					 "Die temperature threshold where charging stops", NULL),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 2 command) array for command "charger". */
