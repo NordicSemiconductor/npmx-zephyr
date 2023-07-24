@@ -664,6 +664,38 @@ static int cmd_die_temp_stop_set(const struct shell *shell, size_t argc, char **
 	return 0;
 }
 
+static int cmd_die_temp_status_get(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	npmx_charger_t *charger_instance = npmx_charger_get(npmx_instance, 0);
+	bool status;
+
+	npmx_error_t err_code = npmx_charger_die_temp_status_get(charger_instance, &status);
+
+	if (check_error_code(shell, err_code)) {
+		if (status == true)
+		{
+			shell_print(shell, "Charger die temperature above high threshold.");
+		}
+		else {
+			shell_print(shell, "Charger die temperature below high threshold.");
+		}
+	} else {
+		shell_error(shell, "Error: unable to read charger die temperature comparator status.");
+	}
+
+	return 0;
+}
+
 static int cmd_buck_set(const struct shell *shell, size_t argc, char **argv)
 {
 	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
@@ -1811,6 +1843,13 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_charger_trickle,
 					 NULL),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 4 command) array for command "charger die_temp status". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_die_temp_status,
+			       SHELL_CMD(get, NULL,
+					 "Get die temperature comparator status",
+					 cmd_die_temp_status_get),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating subcommands (level 4 command) array for command "charger die_temp stop". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_die_temp_stop,
 			       SHELL_CMD(get, NULL,
@@ -1836,6 +1875,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_die_temp,
 			       SHELL_CMD(resume, &sub_die_temp_resume,
 					 "Die temperature threshold where charging resumes", NULL),
 			       SHELL_CMD(stop, &sub_die_temp_stop,
+					 "Die temperature threshold where charging stops", NULL),
+					SHELL_CMD(status, &sub_die_temp_status,
 					 "Die temperature threshold where charging stops", NULL),
 			       SHELL_SUBCMD_SET_END);
 
