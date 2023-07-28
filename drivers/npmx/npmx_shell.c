@@ -588,7 +588,7 @@ static int cmd_die_temp_get(const struct shell *shell, size_t argc, char **argv,
 	npmx_error_t err_code = func(charger_instance, &temperature);
 
 	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Success: %d *C.", temperature);
+		shell_print(shell, "Value: %d *C.", temperature);
 	} else {
 		shell_error(shell, "Error: unable to read die temperature threshold.");
 	}
@@ -711,7 +711,7 @@ static int cmd_ntc_resistance_get(const struct shell *shell, size_t argc, char *
 	npmx_error_t err_code = func(charger_instance, &resistance);
 
 	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Success: %d Ohms.", resistance);
+		shell_print(shell, "Value: %d Ohms.", resistance);
 	} else {
 		shell_error(shell, "Error: unable to read NTC resistance value.");
 	}
@@ -747,6 +747,16 @@ static int cmd_ntc_resistance_warm_set(const struct shell *shell, size_t argc, c
 static int cmd_ntc_resistance_warm_get(const struct shell *shell, size_t argc, char **argv)
 {
 	return cmd_ntc_resistance_get(shell, argc, argv, npmx_charger_warm_resistance_get);
+}
+
+static int cmd_ntc_resistance_hot_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return cmd_ntc_resistance_set(shell, argc, argv, npmx_charger_hot_resistance_set);
+}
+
+static int cmd_ntc_resistance_hot_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return cmd_ntc_resistance_get(shell, argc, argv, npmx_charger_hot_resistance_get);
 }
 
 static int cmd_buck_set(const struct shell *shell, size_t argc, char **argv)
@@ -1956,14 +1966,24 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_ntc_resistance_warm,
 					 cmd_ntc_resistance_warm_set),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 4 command) array for command "charger ntc_resistance hot". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ntc_resistance_hot,
+			       SHELL_CMD(get, NULL, "Get NTC resistance value at 60*C",
+					 cmd_ntc_resistance_hot_get),
+			       SHELL_CMD(set, NULL, "Set NTC resistance value at 60*C",
+					 cmd_ntc_resistance_hot_set),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating subcommands (level 3 command) array for command "charger ntc_resistance". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_ntc_resistance,
 			       SHELL_CMD(cold, &sub_ntc_resistance_cold,
 					 "NTC resistance value at 0*C", NULL),
 			       SHELL_CMD(cool, &sub_ntc_resistance_cool,
 					 "NTC resistance value at 10*C", NULL),
-					 SHELL_CMD(warm, &sub_ntc_resistance_warm,
+			       SHELL_CMD(warm, &sub_ntc_resistance_warm,
 					 "NTC resistance value at 45*C", NULL),
+			       SHELL_CMD(hot, &sub_ntc_resistance_hot,
+					 "NTC resistance value at 60*C", NULL),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 2 command) array for command "charger". */
