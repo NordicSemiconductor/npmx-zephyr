@@ -729,6 +729,16 @@ static int cmd_ntc_resistance_cold_get(const struct shell *shell, size_t argc, c
 	return cmd_ntc_resistance_get(shell, argc, argv, npmx_charger_cold_resistance_get);
 }
 
+static int cmd_ntc_resistance_cool_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return cmd_ntc_resistance_set(shell, argc, argv, npmx_charger_cool_resistance_set);
+}
+
+static int cmd_ntc_resistance_cool_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return cmd_ntc_resistance_get(shell, argc, argv, npmx_charger_cool_resistance_get);
+}
+
 static int cmd_buck_set(const struct shell *shell, size_t argc, char **argv)
 {
 	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
@@ -1920,26 +1930,38 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_ntc_resistance_cold,
 					 cmd_ntc_resistance_cold_set),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 4 command) array for command "charger ntc_resistance cool". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ntc_resistance_cool,
+			       SHELL_CMD(get, NULL, "Get NTC resistance value at 10*C",
+					 cmd_ntc_resistance_cool_get),
+			       SHELL_CMD(set, NULL, "Set NTC resistance value at 10*C",
+					 cmd_ntc_resistance_cool_set),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating subcommands (level 3 command) array for command "charger ntc_resistance". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_ntc_resistance,
 			       SHELL_CMD(cold, &sub_ntc_resistance_cold,
 					 "NTC resistance value at 0*C", NULL),
+			       SHELL_CMD(cool, &sub_ntc_resistance_cool,
+					 "NTC resistance value at 10*C", NULL),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 2 command) array for command "charger". */
-SHELL_STATIC_SUBCMD_SET_CREATE(
-	sub_charger,
-	SHELL_CMD(termination_voltage, &sub_charger_termination_voltage,
-		  "Charger termination voltage", NULL),
-	SHELL_CMD(termination_current, &sub_charger_termination_current,
-		  "Charger termination current", NULL),
-	SHELL_CMD(charger_current, &sub_charger_charging_current, "Charger current", NULL),
-	SHELL_CMD(status, &sub_charger_status, "Charger status", NULL),
-	SHELL_CMD(module, &sub_charger_module, "Charger module", NULL),
-	SHELL_CMD(trickle, &sub_charger_trickle, "Charger trickle voltage", NULL),
-	SHELL_CMD(die_temp, &sub_die_temp, "Charger die temperature", NULL),
-	SHELL_CMD(ntc_resistance, &sub_ntc_resistance, "Battery NTC resistance calibration", NULL),
-	SHELL_SUBCMD_SET_END);
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_charger,
+			       SHELL_CMD(termination_voltage, &sub_charger_termination_voltage,
+					 "Charger termination voltage", NULL),
+			       SHELL_CMD(termination_current, &sub_charger_termination_current,
+					 "Charger termination current", NULL),
+			       SHELL_CMD(charger_current, &sub_charger_charging_current,
+					 "Charger current", NULL),
+			       SHELL_CMD(status, &sub_charger_status, "Charger status", NULL),
+			       SHELL_CMD(module, &sub_charger_module, "Charger module", NULL),
+			       SHELL_CMD(trickle, &sub_charger_trickle, "Charger trickle voltage",
+					 NULL),
+			       SHELL_CMD(die_temp, &sub_die_temp, "Charger die temperature", NULL),
+			       SHELL_CMD(ntc_resistance, &sub_ntc_resistance,
+					 "Battery NTC resistance values calibration", NULL),
+			       SHELL_SUBCMD_SET_END);
 
 /* Creating dictionary subcommands (level 4 command) array for command "buck vout select". */
 SHELL_STATIC_SUBCMD_SET_CREATE(
