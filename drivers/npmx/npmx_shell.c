@@ -643,6 +643,92 @@ static int cmd_die_temp_status_get(const struct shell *shell, size_t argc, char 
 	return 0;
 }
 
+static int cmd_ntc_resistance_set(const struct shell *shell, size_t argc, char **argv,
+				  npmx_error_t (*func)(npmx_charger_t const *p_instance,
+						       uint32_t p_resistance))
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	if (argc < 2) {
+		shell_error(shell, "Error: missing NTC resistance value.");
+		return 0;
+	}
+
+	int err = 0;
+	uint32_t resistance = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT16_MAX);
+
+	if (err != 0) {
+		shell_error(shell, "Error: resistance has to be an integer.");
+		return 0;
+	}
+
+	npmx_charger_t *charger_instance = npmx_charger_get(npmx_instance, 0);
+	uint32_t modules_mask;
+	npmx_error_t err_code = npmx_charger_module_get(charger_instance, &modules_mask);
+
+	if (!check_error_code(shell, err_code)) {
+		shell_error(shell, "Error: unable to get charger module status.");
+		return 0;
+	}
+
+	if ((modules_mask & NPMX_CHARGER_MODULE_CHARGER_MASK) != 0) {
+		shell_error(shell, "Error: charger must be disabled to set NTC resistance value.");
+		return 0;
+	}
+
+	err_code = func(charger_instance, resistance);
+	if (check_error_code(shell, err_code)) {
+		shell_print(shell, "Success: %d Ohms.", resistance);
+	} else {
+		shell_error(shell, "Error: unable to set NTC resistance value.");
+	}
+
+	return 0;
+}
+
+static int cmd_ntc_resistance_get(const struct shell *shell, size_t argc, char **argv,
+				  npmx_error_t (*func)(npmx_charger_t const *p_instance,
+						       uint32_t *resistance))
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	npmx_charger_t *charger_instance = npmx_charger_get(npmx_instance, 0);
+	uint32_t resistance;
+
+	npmx_error_t err_code = func(charger_instance, &resistance);
+
+	if (check_error_code(shell, err_code)) {
+		shell_print(shell, "Success: %d Ohms.", resistance);
+	} else {
+		shell_error(shell, "Error: unable to read NTC resistance value.");
+	}
+
+	return 0;
+}
+
+static int cmd_ntc_resistance_cold_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return cmd_ntc_resistance_set(shell, argc, argv, npmx_charger_cold_resistance_set);
+}
+
+static int cmd_ntc_resistance_cold_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return cmd_ntc_resistance_get(shell, argc, argv, npmx_charger_cold_resistance_get);
+}
+
 static int cmd_buck_set(const struct shell *shell, size_t argc, char **argv)
 {
 	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
@@ -1826,6 +1912,20 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_die_temp,
 					 "Die temperature comparator status", NULL),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 4 command) array for command "charger ntc_resistance cold". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ntc_resistance_cold,
+			       SHELL_CMD(get, NULL, "Get NTC resistance value at 0*C",
+					 cmd_ntc_resistance_cold_get),
+			       SHELL_CMD(set, NULL, "Set NTC resistance value at 0*C",
+					 cmd_ntc_resistance_cold_set),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 3 command) array for command "charger ntc_resistance". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ntc_resistance,
+			       SHELL_CMD(cold, &sub_ntc_resistance_cold,
+					 "NTC resistance value at 0*C", NULL),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating subcommands (level 2 command) array for command "charger". */
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	sub_charger,
@@ -1838,6 +1938,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD(module, &sub_charger_module, "Charger module", NULL),
 	SHELL_CMD(trickle, &sub_charger_trickle, "Charger trickle voltage", NULL),
 	SHELL_CMD(die_temp, &sub_die_temp, "Charger die temperature", NULL),
+	SHELL_CMD(ntc_resistance, &sub_ntc_resistance, "Battery NTC resistance calibration", NULL),
 	SHELL_SUBCMD_SET_END);
 
 /* Creating dictionary subcommands (level 4 command) array for command "buck vout select". */
