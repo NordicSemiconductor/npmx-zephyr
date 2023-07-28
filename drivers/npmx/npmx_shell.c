@@ -739,6 +739,16 @@ static int cmd_ntc_resistance_cool_get(const struct shell *shell, size_t argc, c
 	return cmd_ntc_resistance_get(shell, argc, argv, npmx_charger_cool_resistance_get);
 }
 
+static int cmd_ntc_resistance_warm_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return cmd_ntc_resistance_set(shell, argc, argv, npmx_charger_warm_resistance_set);
+}
+
+static int cmd_ntc_resistance_warm_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return cmd_ntc_resistance_get(shell, argc, argv, npmx_charger_warm_resistance_get);
+}
+
 static int cmd_buck_set(const struct shell *shell, size_t argc, char **argv)
 {
 	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
@@ -1938,12 +1948,22 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_ntc_resistance_cool,
 					 cmd_ntc_resistance_cool_set),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 4 command) array for command "charger ntc_resistance warm". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ntc_resistance_warm,
+			       SHELL_CMD(get, NULL, "Get NTC resistance value at 45*C",
+					 cmd_ntc_resistance_warm_get),
+			       SHELL_CMD(set, NULL, "Set NTC resistance value at 45*C",
+					 cmd_ntc_resistance_warm_set),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating subcommands (level 3 command) array for command "charger ntc_resistance". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_ntc_resistance,
 			       SHELL_CMD(cold, &sub_ntc_resistance_cold,
 					 "NTC resistance value at 0*C", NULL),
 			       SHELL_CMD(cool, &sub_ntc_resistance_cool,
 					 "NTC resistance value at 10*C", NULL),
+					 SHELL_CMD(warm, &sub_ntc_resistance_warm,
+					 "NTC resistance value at 45*C", NULL),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 2 command) array for command "charger". */
