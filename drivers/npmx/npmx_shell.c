@@ -35,8 +35,9 @@ static bool check_error_code(const struct shell *shell, npmx_error_t err_code)
 	return false;
 }
 
-static int cmd_charger_termination_voltage_normal_get(const struct shell *shell, size_t argc,
-						      char **argv)
+static int cmd_charger_termination_voltage_get(
+	const struct shell *shell, size_t argc, char **argv,
+	npmx_error_t (*func)(npmx_charger_t const *p_instance, npmx_charger_voltage_t *voltage))
 {
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
@@ -51,8 +52,7 @@ static int cmd_charger_termination_voltage_normal_get(const struct shell *shell,
 	npmx_charger_t *charger_instance = npmx_charger_get(npmx_instance, 0);
 	npmx_charger_voltage_t voltage;
 
-	npmx_error_t err_code =
-		npmx_charger_termination_normal_voltage_get(charger_instance, &voltage);
+	npmx_error_t err_code = func(charger_instance, &voltage);
 
 	if (check_error_code(shell, err_code)) {
 		uint32_t voltage_mv;
@@ -62,18 +62,18 @@ static int cmd_charger_termination_voltage_normal_get(const struct shell *shell,
 		} else {
 			shell_error(
 				shell,
-				"Error: unable to convert battery normal termination voltage value to mV.");
+				"Error: unable to convert battery termination voltage value to mV.");
 		}
 	} else {
-		shell_error(shell,
-			    "Error: unable to read battery normal termination voltage value.");
+		shell_error(shell, "Error: unable to read battery termination voltage value.");
 	}
 
 	return 0;
 }
 
-static int cmd_charger_termination_voltage_normal_set(const struct shell *shell, size_t argc,
-						      char **argv)
+static int cmd_charger_termination_voltage_set(
+	const struct shell *shell, size_t argc, char **argv,
+	npmx_error_t (*func)(npmx_charger_t const *p_instance, npmx_charger_voltage_t voltage))
 {
 	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
 
@@ -91,7 +91,7 @@ static int cmd_charger_termination_voltage_normal_set(const struct shell *shell,
 	uint32_t volt_set = (uint32_t)shell_strtoul(argv[1], 0, &err);
 
 	if (err != 0) {
-		shell_error(shell, "Error: voltage has to be an integer.");
+		shell_error(shell, "Error: voltage value has to be an integer.");
 		return 0;
 	}
 
@@ -112,20 +112,48 @@ static int cmd_charger_termination_voltage_normal_set(const struct shell *shell,
 	}
 
 	if ((modules_mask & NPMX_CHARGER_MODULE_CHARGER_MASK) != 0) {
-		shell_error(shell, "Error: charger must be disabled to set termination voltage.");
+		shell_error(shell,
+			    "Error: charger must be disabled to set battery termination voltage.");
 		return 0;
 	}
 
-	err_code = npmx_charger_termination_normal_voltage_set(charger_instance, voltage);
+	err_code = func(charger_instance, voltage);
 
 	if (check_error_code(shell, err_code)) {
 		shell_print(shell, "Success: %s mV.", argv[1]);
 	} else {
-		shell_error(shell,
-			    "Error: unable to set battery normal termination voltage value.");
+		shell_error(shell, "Error: unable to set battery termination voltage value.");
 	}
 
 	return 0;
+}
+
+static int cmd_charger_termination_voltage_normal_get(const struct shell *shell, size_t argc,
+						      char **argv)
+{
+	return cmd_charger_termination_voltage_get(shell, argc, argv,
+						   npmx_charger_termination_normal_voltage_get);
+}
+
+static int cmd_charger_termination_voltage_normal_set(const struct shell *shell, size_t argc,
+						      char **argv)
+{
+	return cmd_charger_termination_voltage_set(shell, argc, argv,
+						   npmx_charger_termination_normal_voltage_set);
+}
+
+static int cmd_charger_termination_voltage_warm_get(const struct shell *shell, size_t argc,
+						    char **argv)
+{
+	return cmd_charger_termination_voltage_get(shell, argc, argv,
+						   npmx_charger_termination_warm_voltage_get);
+}
+
+static int cmd_charger_termination_voltage_warm_set(const struct shell *shell, size_t argc,
+						    char **argv)
+{
+	return cmd_charger_termination_voltage_set(shell, argc, argv,
+						   npmx_charger_termination_warm_voltage_set);
 }
 
 static int cmd_charger_termination_current_get(const struct shell *shell, size_t argc, char **argv)
@@ -1713,10 +1741,20 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_charger_termination_voltage_normal,
 					 cmd_charger_termination_voltage_normal_set),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 4 command) array for command "charger termination_voltage warm". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_charger_termination_voltage_warm,
+			       SHELL_CMD(get, NULL, "Get charger warm termination voltage",
+					 cmd_charger_termination_voltage_warm_get),
+			       SHELL_CMD(set, NULL, "Set charger warm termination voltage",
+					 cmd_charger_termination_voltage_warm_set),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating subcommands (level 3 command) array for command "charger termination_voltage". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_charger_termination_voltage,
 			       SHELL_CMD(normal, &sub_charger_termination_voltage_normal,
-					 "Charger termination voltage", NULL),
+					 "Charger normal termination voltage", NULL),
+			       SHELL_CMD(warm, &sub_charger_termination_voltage_warm,
+					 "Charger warm termination voltage", NULL),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 3 command) array for command "charger termination_current". */
