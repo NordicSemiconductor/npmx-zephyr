@@ -1686,9 +1686,10 @@ static int cmd_adc_ntc_set(const struct shell *shell, size_t argc, char **argv, 
 		return 0;
 	}
 
+	npmx_charger_t *charger_instance = npmx_charger_get(npmx_instance, 0);
+
 	uint32_t modules_mask;
-	npmx_error_t err_code =
-		npmx_charger_module_get(npmx_charger_get(npmx_instance, 0), &modules_mask);
+	npmx_error_t err_code = npmx_charger_module_get(charger_instance, &modules_mask);
 
 	if (!check_error_code(shell, err_code)) {
 		shell_error(shell, "Error: unable to get charger module status.");
@@ -1700,8 +1701,40 @@ static int cmd_adc_ntc_set(const struct shell *shell, size_t argc, char **argv, 
 		return 0;
 	}
 
-	npmx_adc_t *adc_instance = npmx_adc_get(npmx_instance, 0);
 	npmx_adc_ntc_type_t type = (npmx_adc_ntc_type_t)data;
+
+	if (type == NPMX_ADC_NTC_TYPE_HI_Z) {
+		err_code = npmx_charger_module_disable_set(
+			charger_instance, NPMX_CHARGER_MODULE_NTC_LIMITS_MASK);
+		if (check_error_code(shell, err_code)) {
+			shell_info(
+				shell,
+				"Info: the NTC temperature limit control module has been disabled.");
+			shell_info(
+				shell,
+				"      To re-enable, change the NTC type to != ntc_hi_z.");
+		} else {
+			shell_error(
+				shell,
+				"Error: unable to disable the NTC temperature limit control module.");
+			return 0;
+		}
+	} else {
+		err_code = npmx_charger_module_enable_set(
+			charger_instance, NPMX_CHARGER_MODULE_NTC_LIMITS_MASK);
+		if (check_error_code(shell, err_code)) {
+			shell_info(
+				shell,
+				"Info: the NTC temperature limit control module has been enabled.");
+		} else {
+			shell_error(
+				shell,
+				"Error: unable to enable the NTC temperature limit control module.");
+			return 0;
+		}
+	}
+
+	npmx_adc_t *adc_instance = npmx_adc_get(npmx_instance, 0);
 
 	err_code = npmx_adc_ntc_set(adc_instance, type);
 
