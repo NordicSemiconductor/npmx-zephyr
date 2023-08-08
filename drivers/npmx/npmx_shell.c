@@ -1714,7 +1714,7 @@ static int cmd_leds_mode_set(const struct shell *shell, size_t argc, char **argv
 	int led_mode = shell_strtol(argv[2], 0, &err);
 
 	if (err != 0) {
-		shell_error(shell, "Error: instance index nad mode have to be integers.");
+		shell_error(shell, "Error: instance index and mode have to be integers.");
 		return 0;
 	}
 
@@ -1752,6 +1752,56 @@ static int cmd_leds_mode_set(const struct shell *shell, size_t argc, char **argv
 		shell_print(shell, "Success: %d.", led_mode);
 	} else {
 		shell_error(shell, "Error: unable to set LED %d mode.", led_idx);
+	}
+
+	return 0;
+}
+
+static int cmd_leds_state_set(const struct shell *shell, size_t argc, char **argv)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	if (argc < 2) {
+		shell_error(shell, "Error: missing LED instance index and LED state.");
+		return 0;
+	}
+
+	if (argc < 3) {
+		shell_error(shell, "Error: missing LED state.");
+		return 0;
+	}
+
+	int err = 0;
+	uint8_t led_idx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
+	uint8_t led_state = CLAMP(shell_strtoul(argv[2], 0, &err), 0, UINT8_MAX);
+
+	if (err != 0) {
+		shell_error(shell, "Error: instance index and state have to be integers.");
+		return 0;
+	}
+
+	if (led_idx >= NPMX_PERIPH_LED_COUNT) {
+		shell_error(shell, "Error: LED instance index is too high: no such instance.");
+		return 0;
+	}
+
+	if (led_state > 1) {
+		shell_error(shell, "Error: invalid LED state value (0 -> OFF, 1 -> ON).");
+		return 0;
+	}
+
+	npmx_led_t *led_instance = npmx_led_get(npmx_instance, led_idx);
+	npmx_error_t err_code = npmx_led_state_set(led_instance, (led_state == 1 ? true : false));
+
+	if (check_error_code(shell, err_code)) {
+		shell_print(shell, "Success: %d.", led_state);
+	} else {
+		shell_error(shell, "Error: unable to set LED %d state.", led_idx);
 	}
 
 	return 0;
@@ -2300,8 +2350,14 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_leds_mode,
 			       SHELL_CMD(set, NULL, "Set LEDs mode", cmd_leds_mode_set),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 3 command) array for command "leds state". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_leds_state,
+			       SHELL_CMD(set, NULL, "Set LEDs state", cmd_leds_state_set),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating subcommands (level 2 command) array for command "leds". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_leds, SHELL_CMD(mode, &sub_leds_mode, "LEDs mode", NULL),
+			       SHELL_CMD(state, &sub_leds_state, "LEDs state", NULL),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating dictionary subcommands (level 4 command) array for command "adc ntc set". */
