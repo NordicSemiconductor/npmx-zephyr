@@ -1656,6 +1656,114 @@ static int cmd_ldsw_ldo_voltage_get(const struct shell *shell, size_t argc, char
 	return 0;
 }
 
+static int cmd_leds_mode_get(const struct shell *shell, size_t argc, char **argv)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	if (argc < 2) {
+		shell_error(shell, "Error: missing LED instance index.");
+		return 0;
+	}
+
+	int err = 0;
+	uint8_t led_idx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
+
+	if (err != 0) {
+		shell_error(shell, "Error: LED instance index must be an integer.");
+		return 0;
+	}
+
+	if (led_idx >= NPMX_PERIPH_LED_COUNT) {
+		shell_error(shell, "Error: LED instance index is too high: no such instance.");
+		return 0;
+	}
+
+	npmx_led_t *led_instance = npmx_led_get(npmx_instance, led_idx);
+
+	npmx_led_mode_t mode;
+	npmx_error_t err_code = npmx_led_mode_get(led_instance, &mode);
+
+	if (check_error_code(shell, err_code)) {
+		shell_print(shell, "Value: %d.", mode);
+	} else {
+		shell_error(shell, "Error: unable to read LED %d mode.", led_idx);
+	}
+
+	return 0;
+}
+
+static int cmd_leds_mode_set(const struct shell *shell, size_t argc, char **argv)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	if (argc < 2) {
+		shell_error(shell, "Error: missing LED instance index and LED mode.");
+		return 0;
+	}
+
+	if (argc < 3) {
+		shell_error(shell, "Error: missing LED mode.");
+		return 0;
+	}
+
+	int err = 0;
+	uint8_t led_idx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
+	int led_mode = shell_strtol(argv[2], 0, &err);
+
+	if (err != 0) {
+		shell_error(shell, "Error: instance index nad mode have to be integers.");
+		return 0;
+	}
+
+	if (led_idx >= NPMX_PERIPH_LED_COUNT) {
+		shell_error(shell, "Error: LED instance index is too high: no such instance.");
+		return 0;
+	}
+
+	npmx_led_t *led_instance = npmx_led_get(npmx_instance, led_idx);
+	npmx_led_mode_t mode;
+
+	switch (led_mode) {
+	case 0:
+		mode = NPMX_LED_MODE_ERROR;
+		break;
+	case 1:
+		mode = NPMX_LED_MODE_CHARGING;
+		break;
+	case 2:
+		mode = NPMX_LED_MODE_HOST;
+		break;
+	case 3:
+		mode = NPMX_LED_MODE_NOTUSED;
+		break;
+	default:
+		shell_error(
+			shell,
+			"Error: LED mode can be 0-Charger error, 1-Charging, 2-HOST, 3-Not used.");
+		return 0;
+	}
+
+	npmx_error_t err_code = npmx_led_mode_set(led_instance, mode);
+
+	if (check_error_code(shell, err_code)) {
+		shell_print(shell, "Success: %d.", led_mode);
+	} else {
+		shell_error(shell, "Error: unable to set LED %d mode.", led_idx);
+	}
+
+	return 0;
+}
+
 static int cmd_adc_ntc_get(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
@@ -2366,6 +2474,16 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_ldsw,
 			       SHELL_CMD(ldo_voltage, &sub_ldsw_ldo_voltage, "LDO voltage", NULL),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 3 command) array for command "leds mode". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_leds_mode,
+			       SHELL_CMD(get, NULL, "Get LEDs mode", cmd_leds_mode_get),
+			       SHELL_CMD(set, NULL, "Set LEDs mode", cmd_leds_mode_set),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 2 command) array for command "leds". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_leds, SHELL_CMD(mode, &sub_leds_mode, "LEDs mode", NULL),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating dictionary subcommands (level 4 command) array for command "adc ntc set". */
 SHELL_SUBCMD_DICT_SET_CREATE(adc_ntc_type, cmd_adc_ntc_set,
 			     (ntc_hi_z, NPMX_ADC_NTC_TYPE_HI_Z, "HIGH Z"),
@@ -2456,6 +2574,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin, SHELL_CMD(vbus, &sub_vbusin_status, "
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_npmx, SHELL_CMD(charger, &sub_charger, "Charger", NULL),
 			       SHELL_CMD(buck, &sub_buck, "Buck", NULL),
 			       SHELL_CMD(ldsw, &sub_ldsw, "LDSW", NULL),
+			       SHELL_CMD(leds, &sub_leds, "LEDs", NULL),
 			       SHELL_CMD(adc, &sub_adc, "ADC", NULL),
 			       SHELL_CMD(timer, &sub_timer, "Timer", NULL),
 			       SHELL_CMD(errlog, &sub_errlog, "Reset errors logs", NULL),
