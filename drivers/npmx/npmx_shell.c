@@ -12,6 +12,15 @@
 #include <zephyr/kernel.h>
 #include <zephyr/shell/shell.h>
 
+typedef enum {
+	GPIO_CONFIG_TYPE_MODE = 0,
+	GPIO_CONFIG_TYPE_TYPE,
+	GPIO_CONFIG_TYPE_PULL,
+	GPIO_CONFIG_TYPE_DRIVE,
+	GPIO_CONFIG_TYPE_OPEN_DRAIN,
+	GPIO_CONFIG_TYPE_DEBOUNCE,
+} gpio_config_type_t;
+
 /** @brief Timer configuration type. */
 typedef enum {
 	NPMX_TIMER_CONFIG_TYPE_MODE,      ///< Configure timer mode.
@@ -1814,6 +1823,325 @@ static int cmd_leds_state_set(const struct shell *shell, size_t argc, char **arg
 	return 0;
 }
 
+static npmx_gpio_mode_t gpio_mode_convert(uint8_t mode)
+{
+	switch (mode) {
+	case 0:
+		return NPMX_GPIO_MODE_INPUT;
+	case 1:
+		return NPMX_GPIO_MODE_INPUT_OVERRIDE_1;
+	case 2:
+		return NPMX_GPIO_MODE_INPUT_OVERRIDE_0;
+	case 3:
+		return NPMX_GPIO_MODE_INPUT_RISING_EDGE;
+	case 4:
+		return NPMX_GPIO_MODE_INPUT_FALLING_EDGE;
+	case 5:
+		return NPMX_GPIO_MODE_OUTPUT_IRQ;
+	case 6:
+		return NPMX_GPIO_MODE_OUTPUT_RESET;
+	case 7:
+		return NPMX_GPIO_MODE_OUTPUT_PLW;
+	case 8:
+		return NPMX_GPIO_MODE_OUTPUT_OVERRIDE_1;
+	case 9:
+		return NPMX_GPIO_MODE_OUTPUT_OVERRIDE_0;
+	default:
+		return NPMX_GPIO_MODE_INVALID;
+	}
+}
+
+static npmx_gpio_pull_t gpio_pull_convert(uint8_t pull)
+{
+	switch (pull) {
+	case 0:
+		return NPMX_GPIO_PULL_DOWN;
+	case 1:
+		return NPMX_GPIO_PULL_UP;
+	case 2:
+		return NPMX_GPIO_PULL_NONE;
+	default:
+		return NPMX_GPIO_PULL_INVALID;
+	}
+}
+
+static npmx_error_t gpio_config_type_set(const struct shell *shell, gpio_config_type_t config_type,
+				  npmx_gpio_config_t *gpio_config, uint32_t input_arg)
+{
+	if (config_type == GPIO_CONFIG_TYPE_MODE) {
+		gpio_config->mode = gpio_mode_convert(input_arg);
+
+		if (gpio_config->mode == NPMX_GPIO_MODE_INVALID) {
+			shell_error(shell, "Error: mode value can be:");
+			shell_error(shell, "       0 - Input");
+			shell_error(shell, "       1 - Input logic 1");
+			shell_error(shell, "       2 - Input logic 0");
+			shell_error(shell, "       3 - Input rising edge event");
+			shell_error(shell, "       4 - Input falling edge event");
+			shell_error(shell, "       5 - Output interrupt");
+			shell_error(shell, "       6 - Output reset");
+			shell_error(shell, "       7 - Output power loss warning");
+			shell_error(shell, "       8 - Output logic 1");
+			shell_error(shell, "       9 - Output logic 0");
+			return NPMX_ERROR_INVALID_PARAM;
+		}
+	} else if (config_type == GPIO_CONFIG_TYPE_PULL) {
+		gpio_config->pull = gpio_pull_convert(input_arg);
+
+		if (gpio_config->pull == NPMX_GPIO_PULL_INVALID) {
+			shell_error(
+				shell,
+				"Error: pull value can be 0-pull down, 1-pull up, 2-pull disable.");
+			return NPMX_ERROR_INVALID_PARAM;
+		}
+	} else if (config_type == GPIO_CONFIG_TYPE_DRIVE) {
+		gpio_config->drive = npmx_gpio_drive_convert(input_arg);
+
+		if (gpio_config->drive == NPMX_GPIO_DRIVE_INVALID) {
+			shell_error(shell, "Error: drive current value can be 1 or 6 [mA].");
+			return NPMX_ERROR_INVALID_PARAM;
+		}
+	} else if (config_type == GPIO_CONFIG_TYPE_OPEN_DRAIN) {
+		if (input_arg <= 1) {
+			gpio_config->open_drain = (input_arg != 0);
+		} else {
+			shell_error(shell, "Error: open drain value can be 0-off or 1-on.");
+			return NPMX_ERROR_INVALID_PARAM;
+		}
+	} else if (config_type == GPIO_CONFIG_TYPE_DEBOUNCE) {
+		if (input_arg <= 1) {
+			gpio_config->debounce = (input_arg != 0);
+		} else {
+			shell_error(shell, "Error: debounce value can be 0-off or 1-on.");
+			return NPMX_ERROR_INVALID_PARAM;
+		}
+	} else {
+		shell_error(shell, "Error: invalid config type value.");
+		return NPMX_ERROR_INVALID_PARAM;
+	}
+
+	return NPMX_SUCCESS;
+}
+
+static int gpio_config_get(const struct shell *shell, size_t argc, char **argv,
+			   gpio_config_type_t config_type)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	if (argc < 2) {
+		shell_error(shell, "Error: missing GPIO number.");
+		return 0;
+	}
+
+	int err = 0;
+	uint8_t gpio_idx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
+
+	if (err != 0) {
+		shell_error(shell, "Error: GPIO number has to be an integer.");
+		return 0;
+	}
+
+	if (gpio_idx >= NPMX_PERIPH_GPIO_COUNT) {
+		shell_error(shell, "Error: GPIO number is too high: no such instance.");
+		return 0;
+	}
+
+	npmx_gpio_t *gpio_instance = npmx_gpio_get(npmx_instance, gpio_idx);
+
+	npmx_gpio_config_t gpio_config;
+	npmx_error_t err_code = npmx_gpio_config_get(gpio_instance, &gpio_config);
+
+	if (!check_error_code(shell, err_code)) {
+		shell_error(shell, "Error: unable to read GPIO config.");
+		return 0;
+	}
+
+	if (config_type == GPIO_CONFIG_TYPE_MODE) {
+		shell_print(shell, "Value: %d.", (int)gpio_config.mode);
+	} else if (config_type == GPIO_CONFIG_TYPE_TYPE) {
+		if (gpio_config.mode <= NPMX_GPIO_MODE_INPUT_FALLING_EDGE) {
+			shell_print(shell, "Value: input.");
+		} else {
+			shell_print(shell, "Value: output.");
+		}
+	} else if (config_type == GPIO_CONFIG_TYPE_PULL) {
+		shell_print(shell, "Value: %d.", (int)gpio_config.pull);
+	} else if (config_type == GPIO_CONFIG_TYPE_DRIVE) {
+		uint32_t drive_val;
+		bool ok = npmx_gpio_drive_convert_to_ma(gpio_config.drive, &drive_val);
+		if (ok) {
+			shell_print(shell, "Value: %u.", drive_val);
+		} else {
+			shell_error(shell, "Error: unable to read GPIO drive current value.");
+			return 0;
+		}
+	} else if (config_type == GPIO_CONFIG_TYPE_OPEN_DRAIN) {
+		shell_print(shell, "Value: %d.", (int)gpio_config.open_drain);
+	} else if (config_type == GPIO_CONFIG_TYPE_DEBOUNCE) {
+		shell_print(shell, "Value: %d.", (int)gpio_config.debounce);
+	} else {
+		shell_error(shell, "Error: invalid config type value.");
+		return 0;
+	}
+
+	return 0;
+}
+
+static int gpio_config_set(const struct shell *shell, size_t argc, char **argv,
+			   gpio_config_type_t config_type)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	char config_name[14];
+	if (config_type == GPIO_CONFIG_TYPE_MODE) {
+		strcpy(config_name, "mode");
+	} else if (config_type == GPIO_CONFIG_TYPE_PULL) {
+		strcpy(config_name, "pull");
+	} else if (config_type == GPIO_CONFIG_TYPE_DRIVE) {
+		strcpy(config_name, "drive current");
+	} else if (config_type == GPIO_CONFIG_TYPE_OPEN_DRAIN) {
+		strcpy(config_name, "open drain");
+	} else if (config_type == GPIO_CONFIG_TYPE_DEBOUNCE) {
+		strcpy(config_name, "debounce");
+	} else {
+		shell_error(shell, "Error: invalid config type value.");
+		return 0;
+	}
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	if (argc < 2) {
+		shell_error(shell, "Error: missing GPIO number and %s config.", config_name);
+		return 0;
+	}
+
+	if (argc < 3) {
+		shell_error(shell, "Error: missing GPIO %s config.", config_name);
+		return 0;
+	}
+
+	int err = 0;
+	uint8_t gpio_idx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
+
+	if (err != 0) {
+		shell_error(shell, "Error: GPIO number has to be an integer.");
+		return 0;
+	}
+
+	if (gpio_idx >= NPMX_PERIPH_GPIO_COUNT) {
+		shell_error(shell, "Error: GPIO number is too high: no such GPIO instance.");
+		return 0;
+	}
+
+	int pmic_int_pin = npmx_driver_int_pin_get(pmic_dev);
+	int pmic_pof_pin = npmx_driver_pof_pin_get(pmic_dev);
+
+	if ((pmic_int_pin != -1) && (pmic_int_pin == gpio_idx)) {
+		shell_error(shell, "Error: GPIO used as interrupt.");
+		return 0;
+	}
+
+	if ((pmic_pof_pin != -1) && (pmic_pof_pin == gpio_idx)) {
+		shell_error(shell, "Error: GPIO used as POF.");
+		return 0;
+	}
+
+	uint8_t input_arg = CLAMP(shell_strtoul(argv[2], 0, &err), 0, UINT8_MAX);
+
+	if (err != 0) {
+		shell_error(shell, "Error: GPIO %s config has to be an integer.", config_name);
+		return 0;
+	}
+
+	npmx_gpio_t *gpio_instance = npmx_gpio_get(npmx_instance, gpio_idx);
+
+	npmx_gpio_config_t gpio_config;
+	npmx_error_t err_code = npmx_gpio_config_get(gpio_instance, &gpio_config);
+
+	if (!check_error_code(shell, err_code)) {
+		shell_error(shell, "Error: unable to read GPIO config.");
+		return 0;
+	}
+
+	if (gpio_config_type_set(shell, config_type, &gpio_config, input_arg) != NPMX_SUCCESS) {
+		return 0;
+	}
+
+	err_code = npmx_gpio_config_set(gpio_instance, &gpio_config);
+
+	if (!check_error_code(shell, err_code)) {
+		shell_error(shell, "Error: unable to set GPIO config.");
+		return 0;
+	}
+
+	shell_print(shell, "Success: %d.", input_arg);
+
+	return 0;
+}
+
+static int cmd_gpio_mode_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return gpio_config_get(shell, argc, argv, GPIO_CONFIG_TYPE_MODE);
+}
+
+static int cmd_gpio_mode_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return gpio_config_set(shell, argc, argv, GPIO_CONFIG_TYPE_MODE);
+}
+
+static int cmd_gpio_type_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return gpio_config_get(shell, argc, argv, GPIO_CONFIG_TYPE_TYPE);
+}
+
+static int cmd_gpio_pull_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return gpio_config_get(shell, argc, argv, GPIO_CONFIG_TYPE_PULL);
+}
+
+static int cmd_gpio_pull_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return gpio_config_set(shell, argc, argv, GPIO_CONFIG_TYPE_PULL);
+}
+
+static int cmd_gpio_drive_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return gpio_config_get(shell, argc, argv, GPIO_CONFIG_TYPE_DRIVE);
+}
+
+static int cmd_gpio_drive_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return gpio_config_set(shell, argc, argv, GPIO_CONFIG_TYPE_DRIVE);
+}
+
+static int cmd_gpio_open_drain_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return gpio_config_get(shell, argc, argv, GPIO_CONFIG_TYPE_OPEN_DRAIN);
+}
+
+static int cmd_gpio_open_drain_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return gpio_config_set(shell, argc, argv, GPIO_CONFIG_TYPE_OPEN_DRAIN);
+}
+
+static int cmd_gpio_debounce_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return gpio_config_get(shell, argc, argv, GPIO_CONFIG_TYPE_DEBOUNCE);
+}
+
+static int cmd_gpio_debounce_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return gpio_config_set(shell, argc, argv, GPIO_CONFIG_TYPE_DEBOUNCE);
+}
+
 static int cmd_adc_ntc_get(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
@@ -2540,6 +2868,55 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_leds, SHELL_CMD(mode, &sub_leds_mode, "LEDs m
 			       SHELL_CMD(state, &sub_leds_state, "LEDs state", NULL),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 3 command) array for command "gpio mode". */
+SHELL_STATIC_SUBCMD_SET_CREATE(
+	sub_gpio_mode, SHELL_CMD(get, NULL, "Get GPIO mode configuration", cmd_gpio_mode_get),
+	SHELL_CMD(set, NULL, "Set GPIO mode configuration", cmd_gpio_mode_set),
+	SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 3 command) array for command "gpio type". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_gpio_type,
+			       SHELL_CMD(get, NULL, "Check GPIO type", cmd_gpio_type_get),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 3 command) array for command "gpio pull". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_gpio_pull,
+			       SHELL_CMD(get, NULL, "Get pull configuration", cmd_gpio_pull_get),
+			       SHELL_CMD(set, NULL, "Set pull configuration", cmd_gpio_pull_set),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 3 command) array for command "gpio drive". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_gpio_drive,
+			       SHELL_CMD(get, NULL, "Get drive current configuration", cmd_gpio_drive_get),
+			       SHELL_CMD(set, NULL, "Set drive current configuration", cmd_gpio_drive_set),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 3 command) array for command "gpio open_drain". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_gpio_open_drain,
+			       SHELL_CMD(get, NULL, "Check if open drain is enabled",
+					 cmd_gpio_open_drain_get),
+			       SHELL_CMD(set, NULL, "Enable or disable open drain",
+					 cmd_gpio_open_drain_set),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 3 command) array for command "gpio debounce". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_gpio_debounce,
+			       SHELL_CMD(get, NULL, "Check if debounce is enabled",
+					 cmd_gpio_debounce_get),
+			       SHELL_CMD(set, NULL, "Enable or disable debounce",
+					 cmd_gpio_debounce_set),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 2 command) array for command "gpio". */
+SHELL_STATIC_SUBCMD_SET_CREATE(
+	sub_gpio, SHELL_CMD(mode, &sub_gpio_mode, "GPIO mode configuration", NULL),
+	SHELL_CMD(type, &sub_gpio_type, "GPIO type", NULL),
+	SHELL_CMD(pull, &sub_gpio_pull, "Pull type configuration", NULL),
+	SHELL_CMD(drive, &sub_gpio_drive, "Drive current configuration", NULL),
+	SHELL_CMD(open_drain, &sub_gpio_open_drain, "Open drain configuration", NULL),
+	SHELL_CMD(debounce, &sub_gpio_debounce, "Debounce configuration", NULL),
+	SHELL_SUBCMD_SET_END);
+
 /* Creating dictionary subcommands (level 4 command) array for command "adc ntc set". */
 SHELL_SUBCMD_DICT_SET_CREATE(adc_ntc_type, cmd_adc_ntc_set,
 			     (ntc_hi_z, NPMX_ADC_NTC_TYPE_HI_Z, "HIGH Z"),
@@ -2631,6 +3008,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_npmx, SHELL_CMD(charger, &sub_charger, "Charg
 			       SHELL_CMD(buck, &sub_buck, "Buck", NULL),
 			       SHELL_CMD(ldsw, &sub_ldsw, "LDSW", NULL),
 			       SHELL_CMD(leds, &sub_leds, "LEDs", NULL),
+			       SHELL_CMD(gpio, &sub_gpio, "GPIOs", NULL),
 			       SHELL_CMD(adc, &sub_adc, "ADC", NULL),
 			       SHELL_CMD(timer, &sub_timer, "Timer", NULL),
 			       SHELL_CMD(errlog, &sub_errlog, "Reset errors logs", NULL),
