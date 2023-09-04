@@ -684,7 +684,7 @@ static int cmd_die_temp_status_get(const struct shell *shell, size_t argc, char 
 	npmx_error_t err_code = npmx_charger_die_temp_status_get(charger_instance, &status);
 
 	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Success: %d", status);
+		shell_print(shell, "Value: %d.", status);
 	} else {
 		shell_error(shell,
 			    "Error: unable to read charger die temperature comparator status.");
