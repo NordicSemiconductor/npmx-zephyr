@@ -590,7 +590,7 @@ static int cmd_die_temp_set(const struct shell *shell, size_t argc, char **argv,
 	uint16_t temperature = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT16_MAX);
 
 	if (err != 0) {
-		shell_error(shell, "Error: temperature has to be an integer.");
+		shell_error(shell, "Error: temperature has to be a non-negative integer.");
 		return 0;
 	}
 
