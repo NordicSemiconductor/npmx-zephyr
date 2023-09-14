@@ -36,6 +36,12 @@ typedef enum {
 	TIMER_CONFIG_TYPE_COMPARE, /* Configure timer compare value. */
 } timer_config_type_t;
 
+/** @brief SHIP configuration type. */
+typedef enum {
+	SHIP_CONFIG_TYPE_TIME, /* Time required to exit from the ship or the hibernate mode. */
+	SHIP_CONFIG_TYPE_INV_POLARITY /* Device is to invert the SHPHLD button active status. */
+} ship_config_type_t;
+
 static const struct device *pmic_dev = DEVICE_DT_GET(DT_NODELABEL(npm_0));
 
 static bool check_error_code(const struct shell *shell, npmx_error_t err_code)
@@ -2789,6 +2795,128 @@ static int cmd_vbusin_current_limit_set(const struct shell *shell, size_t argc, 
 	return 0;
 }
 
+static int ship_config_get(const struct shell *shell, ship_config_type_t config_type)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	npmx_ship_config_t config;
+	npmx_ship_t *ship_instance = npmx_ship_get(npmx_instance, 0);
+	npmx_error_t err_code = npmx_ship_config_get(ship_instance, &config);
+
+	if (check_error_code(shell, err_code)) {
+		uint32_t config_val = 0;
+
+		switch (config_type) {
+		case SHIP_CONFIG_TYPE_TIME:
+			if (!npmx_ship_time_convert_to_ms(config.time, &config_val)) {
+				shell_error(shell, "Error: unable to convert.");
+				return 0;
+			}
+			break;
+
+		case SHIP_CONFIG_TYPE_INV_POLARITY:
+			config_val = (uint32_t)config.inverted_polarity;
+			break;
+		}
+
+		shell_print(shell, "Value: %u.", config_val);
+	} else {
+		shell_error(shell, "Error: unable to read config.");
+	}
+
+	return 0;
+}
+
+static int ship_config_set(const struct shell *shell, size_t argc, char **argv,
+			   ship_config_type_t config_type)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	if (argc < 2) {
+		shell_error(shell, "Error: missing config value.");
+		return 0;
+	}
+
+	int err = 0;
+	uint32_t config_val = shell_strtoul(argv[1], 0, &err);
+
+	if (err != 0) {
+		shell_error(shell, "Error: config value must be an integer.");
+		return 0;
+	}
+
+	npmx_ship_config_t config;
+	npmx_ship_t *ship_instance = npmx_ship_get(npmx_instance, 0);
+
+	npmx_error_t err_code = npmx_ship_config_get(ship_instance, &config);
+
+	if (!check_error_code(shell, err_code)) {
+		shell_error(shell, "Error: unable to read config.");
+		return 0;
+	}
+
+	switch (config_type) {
+	case SHIP_CONFIG_TYPE_TIME:
+		npmx_ship_time_t time = npmx_ship_time_convert(config_val);
+		if (time == NPMX_SHIP_TIME_INVALID) {
+			shell_error(shell, "Error: wrong time value.");
+			return 0;
+		}
+		config.time = time;
+		break;
+
+	case SHIP_CONFIG_TYPE_INV_POLARITY:
+		config.inverted_polarity = !!config_val;
+		break;
+	}
+
+	err_code = npmx_ship_config_set(ship_instance, &config);
+
+	if (check_error_code(shell, err_code)) {
+		shell_print(shell, "Success: %d.", (int)config_val);
+	} else {
+		shell_error(shell, "Error: unable to set config.");
+	}
+
+	return 0;
+}
+
+static int cmd_ship_config_time_get(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	return ship_config_get(shell, SHIP_CONFIG_TYPE_TIME);
+}
+
+static int cmd_ship_config_time_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return ship_config_set(shell, argc, argv, SHIP_CONFIG_TYPE_TIME);
+}
+
+static int cmd_ship_config_inv_polarity_get(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	return ship_config_get(shell, SHIP_CONFIG_TYPE_INV_POLARITY);
+}
+
+static int cmd_ship_config_inv_polarity_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return ship_config_set(shell, argc, argv, SHIP_CONFIG_TYPE_INV_POLARITY);
+}
+
 static int cmd_reset(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
@@ -3310,19 +3438,41 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin, SHELL_CMD(vbus, &sub_vbusin_status, "
 					 NULL),
 			       SHELL_SUBCMD_SET_END);
 
-/* Creating subcommands (level 1 command) array for command "npmx". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_npmx, SHELL_CMD(charger, &sub_charger, "Charger", NULL),
-			       SHELL_CMD(buck, &sub_buck, "Buck", NULL),
-			       SHELL_CMD(ldsw, &sub_ldsw, "LDSW", NULL),
-			       SHELL_CMD(leds, &sub_leds, "LEDs", NULL),
-			       SHELL_CMD(gpio, &sub_gpio, "GPIOs", NULL),
-			       SHELL_CMD(adc, &sub_adc, "ADC", NULL),
-			       SHELL_CMD(pof, &sub_pof, "POF", NULL),
-			       SHELL_CMD(timer, &sub_timer, "Timer", NULL),
-			       SHELL_CMD(errlog, &sub_errlog, "Reset errors logs", NULL),
-			       SHELL_CMD(vbusin, &sub_vbusin, "VBUSIN", NULL),
-			       SHELL_CMD(reset, NULL, "Restart device", cmd_reset),
+/* Creating subcommands (level 4 command) array for command "ship config time". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ship_config_time,
+			       SHELL_CMD(get, NULL, "Get ship exit time", cmd_ship_config_time_get),
+			       SHELL_CMD(set, NULL, "Set ship exit time", cmd_ship_config_time_set),
 			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 4 command) array for command "ship config inv_polarity". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ship_config_inv_polarity,
+			       SHELL_CMD(get, NULL, "Get inverted polarity status",
+					 cmd_ship_config_inv_polarity_get),
+			       SHELL_CMD(set, NULL, "Set inverted polarity status",
+					 cmd_ship_config_inv_polarity_set),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 3 command) array for command "ship config". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ship_config,
+			       SHELL_CMD(time, &sub_ship_config_time, "Time", NULL),
+			       SHELL_CMD(inv_polarity, &sub_ship_config_inv_polarity,
+					 "Button invert polarity", NULL),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 2 command) array for command "ship". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ship, SHELL_CMD(config, &sub_ship_config, "Ship config", NULL),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 1 command) array for command "npmx". */
+SHELL_STATIC_SUBCMD_SET_CREATE(
+	sub_npmx, SHELL_CMD(charger, &sub_charger, "Charger", NULL),
+	SHELL_CMD(buck, &sub_buck, "Buck", NULL), SHELL_CMD(ldsw, &sub_ldsw, "LDSW", NULL),
+	SHELL_CMD(leds, &sub_leds, "LEDs", NULL), SHELL_CMD(gpio, &sub_gpio, "GPIOs", NULL),
+	SHELL_CMD(adc, &sub_adc, "ADC", NULL), SHELL_CMD(pof, &sub_pof, "POF", NULL),
+	SHELL_CMD(timer, &sub_timer, "Timer", NULL),
+	SHELL_CMD(errlog, &sub_errlog, "Reset errors logs", NULL),
+	SHELL_CMD(vbusin, &sub_vbusin, "VBUSIN", NULL), SHELL_CMD(ship, &sub_ship, "SHIP", NULL),
+	SHELL_CMD(reset, NULL, "Restart device", cmd_reset), SHELL_SUBCMD_SET_END);
 
 /* Creating root (level 0) command "npmx" without a handler. */
 SHELL_CMD_REGISTER(npmx, &sub_npmx, "npmx", NULL);
