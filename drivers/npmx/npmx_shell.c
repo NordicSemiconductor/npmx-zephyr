@@ -12,27 +12,29 @@
 #include <zephyr/kernel.h>
 #include <zephyr/shell/shell.h>
 
+/** @brief GPIO configuration type. */
 typedef enum {
-	GPIO_CONFIG_TYPE_MODE = 0,
-	GPIO_CONFIG_TYPE_TYPE,
-	GPIO_CONFIG_TYPE_PULL,
-	GPIO_CONFIG_TYPE_DRIVE,
-	GPIO_CONFIG_TYPE_OPEN_DRAIN,
-	GPIO_CONFIG_TYPE_DEBOUNCE,
+	GPIO_CONFIG_TYPE_MODE, /* GPIO mode. */
+	GPIO_CONFIG_TYPE_TYPE, /* GPIO type. */
+	GPIO_CONFIG_TYPE_PULL, /* GPIO pull. */
+	GPIO_CONFIG_TYPE_DRIVE, /* GPIO drive. */
+	GPIO_CONFIG_TYPE_OPEN_DRAIN, /* GPIO open drain. */
+	GPIO_CONFIG_TYPE_DEBOUNCE, /* GPIO debounce. */
 } gpio_config_type_t;
 
+/** @brief POF configuration type. */
 typedef enum {
-	POF_CONFIG_TYPE_ENABLE = 0,
-	POF_CONFIG_TYPE_POLARITY,
-	POF_CONFIG_TYPE_THRESHOLD,
+	POF_CONFIG_TYPE_ENABLE, /* Enable POF. */
+	POF_CONFIG_TYPE_POLARITY, /* POF polarity. */
+	POF_CONFIG_TYPE_THRESHOLD, /* POF threshold value. */
 } pof_config_type_t;
 
 /** @brief Timer configuration type. */
 typedef enum {
-	NPMX_TIMER_CONFIG_TYPE_MODE,      ///< Configure timer mode.
-	NPMX_TIMER_CONFIG_TYPE_PRESCALER, ///< Configure timer prescaler mode.
-	NPMX_TIMER_CONFIG_TYPE_COMPARE,   ///< Configure timer compare value.
-} npmx_timer_config_type_t;
+	TIMER_CONFIG_TYPE_MODE, /* Configure timer mode. */
+	TIMER_CONFIG_TYPE_PRESCALER, /* Configure timer prescaler mode. */
+	TIMER_CONFIG_TYPE_COMPARE, /* Configure timer compare value. */
+} timer_config_type_t;
 
 static const struct device *pmic_dev = DEVICE_DT_GET(DT_NODELABEL(npm_0));
 
@@ -529,7 +531,9 @@ static int cmd_charger_trickle_get(const struct shell *shell, size_t argc, char 
 		if (npmx_charger_trickle_convert_to_mv(voltage, &voltage_mv)) {
 			shell_print(shell, "Value: %d mV.", voltage_mv);
 		} else {
-			shell_error(shell, "Error: unable to convert trickle voltage value to millivolts.");
+			shell_error(
+				shell,
+				"Error: unable to convert trickle voltage value to millivolts.");
 		}
 	} else {
 		shell_error(shell, "Error: unable to read trickle voltage value.");
@@ -1025,7 +1029,8 @@ static int buck_voltage_get(const struct shell *shell, size_t argc, char **argv,
 		if (npmx_buck_voltage_convert_to_mv(voltage, &voltage_mv)) {
 			shell_print(shell, "Value: %d mV.", voltage_mv);
 		} else {
-			shell_error(shell, "Error: unable to convert buck voltage value to millivolts.");
+			shell_error(shell,
+				    "Error: unable to convert buck voltage value to millivolts.");
 		}
 	} else {
 		shell_error(shell, "Error: unable to read buck voltage.");
@@ -1672,7 +1677,8 @@ static int cmd_ldsw_ldo_voltage_get(const struct shell *shell, size_t argc, char
 		if (npmx_ldsw_voltage_convert_to_mv(voltage, &voltage_mv)) {
 			shell_print(shell, "Value: %d mV.", voltage_mv);
 		} else {
-			shell_error(shell, "Error: unable to convert LDO voltage value to millivolts.");
+			shell_error(shell,
+				    "Error: unable to convert LDO voltage value to millivolts.");
 		}
 	} else {
 		shell_error(shell, "Error: unable to read LDO voltage.");
@@ -1882,7 +1888,7 @@ static npmx_gpio_pull_t gpio_pull_convert(uint8_t pull)
 }
 
 static npmx_error_t gpio_config_type_set(const struct shell *shell, gpio_config_type_t config_type,
-				  npmx_gpio_config_t *gpio_config, uint32_t input_arg)
+					 npmx_gpio_config_t *gpio_config, uint32_t input_arg)
 {
 	if (config_type == GPIO_CONFIG_TYPE_MODE) {
 		gpio_config->mode = gpio_mode_convert(input_arg);
@@ -2213,15 +2219,14 @@ static int cmd_adc_ntc_set(const struct shell *shell, size_t argc, char **argv, 
 	npmx_adc_ntc_type_t type = (npmx_adc_ntc_type_t)data;
 
 	if (type == NPMX_ADC_NTC_TYPE_HI_Z) {
-		err_code = npmx_charger_module_disable_set(
-			charger_instance, NPMX_CHARGER_MODULE_NTC_LIMITS_MASK);
+		err_code = npmx_charger_module_disable_set(charger_instance,
+							   NPMX_CHARGER_MODULE_NTC_LIMITS_MASK);
 		if (check_error_code(shell, err_code)) {
 			shell_info(
 				shell,
 				"Info: the NTC temperature limit control module has been disabled.");
-			shell_info(
-				shell,
-				"      To re-enable, change the NTC type to != ntc_hi_z.");
+			shell_info(shell,
+				   "      To re-enable, change the NTC type to != ntc_hi_z.");
 		} else {
 			shell_error(
 				shell,
@@ -2229,8 +2234,8 @@ static int cmd_adc_ntc_set(const struct shell *shell, size_t argc, char **argv, 
 			return 0;
 		}
 	} else {
-		err_code = npmx_charger_module_enable_set(
-			charger_instance, NPMX_CHARGER_MODULE_NTC_LIMITS_MASK);
+		err_code = npmx_charger_module_enable_set(charger_instance,
+							  NPMX_CHARGER_MODULE_NTC_LIMITS_MASK);
 		if (check_error_code(shell, err_code)) {
 			shell_info(
 				shell,
@@ -2328,8 +2333,9 @@ static int pof_config_get(const struct shell *shell, pof_config_type_t config_ty
 			if (npmx_pof_threshold_convert_to_mv(pof_config.threshold, &mvolts)) {
 				shell_print(shell, "Value: %d mV.", mvolts);
 			} else {
-				shell_error(shell,
-					    "Error: unable to convert threshold value to millivolts.");
+				shell_error(
+					shell,
+					"Error: unable to convert threshold value to millivolts.");
 			}
 			break;
 		}
@@ -2387,7 +2393,8 @@ static int pof_config_set(const struct shell *shell, size_t argc, char **argv,
 	switch (config_type) {
 	case POF_CONFIG_TYPE_ENABLE:
 		if (value < NPMX_POF_STATUS_COUNT) {
-			pof_config.status = (value ? NPMX_POF_STATUS_ENABLE : NPMX_POF_STATUS_DISABLE);
+			pof_config.status =
+				(value ? NPMX_POF_STATUS_ENABLE : NPMX_POF_STATUS_DISABLE);
 		} else {
 			shell_error(shell, "Error: enable value can be 0-Disable, 1-Enable.");
 			return 0;
@@ -2395,7 +2402,8 @@ static int pof_config_set(const struct shell *shell, size_t argc, char **argv,
 		break;
 	case POF_CONFIG_TYPE_POLARITY:
 		if (value < NPMX_POF_POLARITY_COUNT) {
-			pof_config.polarity = (value ? NPMX_POF_POLARITY_HIGH : NPMX_POF_POLARITY_LOW);
+			pof_config.polarity =
+				(value ? NPMX_POF_POLARITY_HIGH : NPMX_POF_POLARITY_LOW);
 		} else {
 			shell_error(shell,
 				    "Error: polarity value can be 0-Active low, 1-Active high.");
@@ -2484,7 +2492,7 @@ static npmx_timer_mode_t timer_mode_int_convert_to_enum(uint32_t timer_mode)
 	}
 }
 
-static int timer_config_get(const struct shell *shell, npmx_timer_config_type_t config_type)
+static int timer_config_get(const struct shell *shell, timer_config_type_t config_type)
 {
 	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
 
@@ -2499,11 +2507,11 @@ static int timer_config_get(const struct shell *shell, npmx_timer_config_type_t 
 	npmx_error_t err_code = npmx_timer_config_get(timer_instance, &timer_config);
 
 	if (check_error_code(shell, err_code)) {
-		if (config_type == NPMX_TIMER_CONFIG_TYPE_MODE) {
+		if (config_type == TIMER_CONFIG_TYPE_MODE) {
 			shell_print(shell, "Value: %d.", timer_config.mode);
-		} else if (config_type == NPMX_TIMER_CONFIG_TYPE_PRESCALER) {
+		} else if (config_type == TIMER_CONFIG_TYPE_PRESCALER) {
 			shell_print(shell, "Value: %d.", timer_config.prescaler);
-		} else if (config_type == NPMX_TIMER_CONFIG_TYPE_COMPARE) {
+		} else if (config_type == TIMER_CONFIG_TYPE_COMPARE) {
 			shell_print(shell, "Value: %d.", timer_config.compare_value);
 		}
 	} else {
@@ -2514,7 +2522,7 @@ static int timer_config_get(const struct shell *shell, npmx_timer_config_type_t 
 }
 
 static int timer_config_set(const struct shell *shell, size_t argc, char **argv,
-			    npmx_timer_config_type_t config_type)
+			    timer_config_type_t config_type)
 {
 	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
 
@@ -2524,11 +2532,11 @@ static int timer_config_set(const struct shell *shell, size_t argc, char **argv,
 	}
 
 	char config_name[10];
-	if (config_type == NPMX_TIMER_CONFIG_TYPE_MODE) {
+	if (config_type == TIMER_CONFIG_TYPE_MODE) {
 		strcpy(config_name, "mode");
-	} else if (config_type == NPMX_TIMER_CONFIG_TYPE_PRESCALER) {
+	} else if (config_type == TIMER_CONFIG_TYPE_PRESCALER) {
 		strcpy(config_name, "prescaler");
-	} else if (config_type == NPMX_TIMER_CONFIG_TYPE_COMPARE) {
+	} else if (config_type == TIMER_CONFIG_TYPE_COMPARE) {
 		strcpy(config_name, "period");
 	} else {
 		shell_error(shell, "Error: invalid config type value.");
@@ -2557,7 +2565,7 @@ static int timer_config_set(const struct shell *shell, size_t argc, char **argv,
 		return 0;
 	}
 
-	if (config_type == NPMX_TIMER_CONFIG_TYPE_MODE) {
+	if (config_type == TIMER_CONFIG_TYPE_MODE) {
 		timer_config.mode = timer_mode_int_convert_to_enum(input_value);
 
 		if (timer_config.mode == NPMX_TIMER_MODE_INVALID) {
@@ -2566,7 +2574,7 @@ static int timer_config_set(const struct shell *shell, size_t argc, char **argv,
 				    "2-watchdog reset, 3-general purpose or 4-wakeup.");
 			return 0;
 		}
-	} else if (config_type == NPMX_TIMER_CONFIG_TYPE_PRESCALER) {
+	} else if (config_type == TIMER_CONFIG_TYPE_PRESCALER) {
 		if (input_value < NPMX_TIMER_PRESCALER_COUNT) {
 			timer_config.prescaler = (input_value ? NPMX_TIMER_PRESCALER_FAST :
 								NPMX_TIMER_PRESCALER_SLOW);
@@ -2574,7 +2582,7 @@ static int timer_config_set(const struct shell *shell, size_t argc, char **argv,
 			shell_error(shell, "Error: timer prescaler value can be 0-slow or 1-fast.");
 			return 0;
 		}
-	} else if (config_type == NPMX_TIMER_CONFIG_TYPE_COMPARE) {
+	} else if (config_type == TIMER_CONFIG_TYPE_COMPARE) {
 		if (input_value <= NPMX_PERIPH_TIMER_COUNTER_COMPARE_VALUE_MAX) {
 			timer_config.compare_value = input_value;
 		} else {
@@ -2587,11 +2595,11 @@ static int timer_config_set(const struct shell *shell, size_t argc, char **argv,
 	err_code = npmx_timer_config_set(timer_instance, &timer_config);
 
 	if (check_error_code(shell, err_code)) {
-		if (config_type == NPMX_TIMER_CONFIG_TYPE_MODE) {
+		if (config_type == TIMER_CONFIG_TYPE_MODE) {
 			shell_print(shell, "Success: %d.", timer_config.mode);
-		} else if (config_type == NPMX_TIMER_CONFIG_TYPE_PRESCALER) {
+		} else if (config_type == TIMER_CONFIG_TYPE_PRESCALER) {
 			shell_print(shell, "Success: %d.", timer_config.prescaler);
-		} else if (config_type == NPMX_TIMER_CONFIG_TYPE_COMPARE) {
+		} else if (config_type == TIMER_CONFIG_TYPE_COMPARE) {
 			shell_print(shell, "Success: %d.", timer_config.compare_value);
 		}
 	} else {
@@ -2606,12 +2614,12 @@ static int cmd_timer_config_mode_get(const struct shell *shell, size_t argc, cha
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
-	return timer_config_get(shell, NPMX_TIMER_CONFIG_TYPE_MODE);
+	return timer_config_get(shell, TIMER_CONFIG_TYPE_MODE);
 }
 
 static int cmd_timer_config_mode_set(const struct shell *shell, size_t argc, char **argv)
 {
-	return timer_config_set(shell, argc, argv, NPMX_TIMER_CONFIG_TYPE_MODE);
+	return timer_config_set(shell, argc, argv, TIMER_CONFIG_TYPE_MODE);
 }
 
 static int cmd_timer_config_prescaler_get(const struct shell *shell, size_t argc, char **argv)
@@ -2619,12 +2627,12 @@ static int cmd_timer_config_prescaler_get(const struct shell *shell, size_t argc
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
-	return timer_config_get(shell, NPMX_TIMER_CONFIG_TYPE_PRESCALER);
+	return timer_config_get(shell, TIMER_CONFIG_TYPE_PRESCALER);
 }
 
 static int cmd_timer_config_prescaler_set(const struct shell *shell, size_t argc, char **argv)
 {
-	return timer_config_set(shell, argc, argv, NPMX_TIMER_CONFIG_TYPE_PRESCALER);
+	return timer_config_set(shell, argc, argv, TIMER_CONFIG_TYPE_PRESCALER);
 }
 
 static int cmd_timer_config_period_get(const struct shell *shell, size_t argc, char **argv)
@@ -2632,12 +2640,12 @@ static int cmd_timer_config_period_get(const struct shell *shell, size_t argc, c
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
-	return timer_config_get(shell, NPMX_TIMER_CONFIG_TYPE_COMPARE);
+	return timer_config_get(shell, TIMER_CONFIG_TYPE_COMPARE);
 }
 
 static int cmd_timer_config_period_set(const struct shell *shell, size_t argc, char **argv)
 {
-	return timer_config_set(shell, argc, argv, NPMX_TIMER_CONFIG_TYPE_COMPARE);
+	return timer_config_set(shell, argc, argv, TIMER_CONFIG_TYPE_COMPARE);
 }
 
 static void print_errlog(npmx_instance_t *p_pm, npmx_callback_type_t type, uint8_t mask)
@@ -2978,16 +2986,13 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_ntc_resistance_hot,
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 3 command) array for command "charger ntc_resistance". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_ntc_resistance,
-			       SHELL_CMD(cold, &sub_ntc_resistance_cold,
-					 "NTC resistance value at 0*C", NULL),
-			       SHELL_CMD(cool, &sub_ntc_resistance_cool,
-					 "NTC resistance value at 10*C", NULL),
-			       SHELL_CMD(warm, &sub_ntc_resistance_warm,
-					 "NTC resistance value at 45*C", NULL),
-			       SHELL_CMD(hot, &sub_ntc_resistance_hot,
-					 "NTC resistance value at 60*C", NULL),
-			       SHELL_SUBCMD_SET_END);
+SHELL_STATIC_SUBCMD_SET_CREATE(
+	sub_ntc_resistance,
+	SHELL_CMD(cold, &sub_ntc_resistance_cold, "NTC resistance value at 0*C", NULL),
+	SHELL_CMD(cool, &sub_ntc_resistance_cool, "NTC resistance value at 10*C", NULL),
+	SHELL_CMD(warm, &sub_ntc_resistance_warm, "NTC resistance value at 45*C", NULL),
+	SHELL_CMD(hot, &sub_ntc_resistance_hot, "NTC resistance value at 60*C", NULL),
+	SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 2 command) array for command "charger". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_charger,
@@ -3152,10 +3157,10 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_gpio_pull,
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 3 command) array for command "gpio drive". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_gpio_drive,
-			       SHELL_CMD(get, NULL, "Get drive current configuration", cmd_gpio_drive_get),
-			       SHELL_CMD(set, NULL, "Set drive current configuration", cmd_gpio_drive_set),
-			       SHELL_SUBCMD_SET_END);
+SHELL_STATIC_SUBCMD_SET_CREATE(
+	sub_gpio_drive, SHELL_CMD(get, NULL, "Get drive current configuration", cmd_gpio_drive_get),
+	SHELL_CMD(set, NULL, "Set drive current configuration", cmd_gpio_drive_set),
+	SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 3 command) array for command "gpio open_drain". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_gpio_open_drain,
