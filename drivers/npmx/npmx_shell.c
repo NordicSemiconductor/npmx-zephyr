@@ -496,6 +496,16 @@ static int cmd_charger_module_ntc_get(const struct shell *shell, size_t argc, ch
 	return cmd_charger_module_get(shell, argc, argv, NPMX_CHARGER_MODULE_NTC_LIMITS_MASK);
 }
 
+static int cmd_charger_module_full_cool_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return cmd_charger_module_set(shell, argc, argv, NPMX_CHARGER_MODULE_FULL_COOL_MASK);
+}
+
+static int cmd_charger_module_full_cool_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return cmd_charger_module_get(shell, argc, argv, NPMX_CHARGER_MODULE_FULL_COOL_MASK);
+}
+
 static int cmd_charger_trickle_get(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
@@ -2795,11 +2805,21 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_charger_module_ntc,
 			       SHELL_CMD(get, NULL, "Get NTC status", cmd_charger_module_ntc_get),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 4 command) array for command "charger module full_coll". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_charger_module_full_cool,
+			       SHELL_CMD(set, NULL, "Enable or disable full charge",
+					 cmd_charger_module_full_cool_set),
+			       SHELL_CMD(get, NULL, "Get full charge status",
+					 cmd_charger_module_full_cool_get),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating subcommands (level 3 command) array for command "charger module". */
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	sub_charger_module, SHELL_CMD(charger, &sub_charger_module_charger, "Charger module", NULL),
 	SHELL_CMD(recharge, &sub_charger_module_recharge, "Recharge module", NULL),
-	SHELL_CMD(ntc, &sub_charger_module_ntc, "NTC module", NULL), SHELL_SUBCMD_SET_END);
+	SHELL_CMD(ntc, &sub_charger_module_ntc, "NTC module", NULL),
+	SHELL_CMD(ntc, &sub_charger_module_full_cool, "Full charge in cool temp module", NULL),
+	SHELL_SUBCMD_SET_END);
 
 /* Creating dictionary subcommands (level 4 command) array for command "charger trickle set". */
 SHELL_SUBCMD_DICT_SET_CREATE(charger_trickle_type, cmd_charger_trickle_set,
