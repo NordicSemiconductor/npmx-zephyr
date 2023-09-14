@@ -2706,6 +2706,36 @@ static int cmd_vbusin_status_connected_get(const struct shell *shell, size_t arg
 	return 0;
 }
 
+static int cmd_vbusin_status_cc_get(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	npmx_vbusin_cc_t cc1;
+	npmx_vbusin_cc_t cc2;
+	npmx_vbusin_t *vbusin_instance = npmx_vbusin_get(npmx_instance, 0);
+	npmx_error_t err_code = npmx_vbusin_cc_status_get(vbusin_instance, &cc1, &cc2);
+
+	if (check_error_code(shell, err_code)) {
+		if (cc1 == NPMX_VBUSIN_CC_NOT_CONNECTED) {
+			shell_print(shell, "Value: %d.", cc2);
+		} else {
+			shell_print(shell, "Value: %d.", cc1);
+		}
+	} else {
+		shell_error(shell, "Error: unable to read VBUS CC line status.");
+	}
+
+	return 0;
+}
+
 static int cmd_vbusin_current_limit_get(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
@@ -3284,10 +3314,16 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin_status_connected,
 					 cmd_vbusin_status_connected_get),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 4 command) array for command "vbusin status cc". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin_status_cc,
+			       SHELL_CMD(get, NULL, "Get VBUS CC status", cmd_vbusin_status_cc_get),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating subcommands (level 3 command) array for command "vbusin status". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin_status,
-			       SHELL_CMD(status, &sub_vbusin_status_connected, "VBUS connected",
+			       SHELL_CMD(connected, &sub_vbusin_status_connected, "VBUS connected",
 					 NULL),
+			       SHELL_CMD(cc, &sub_vbusin_status_cc, "VBUS CC", NULL),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 3 command) array for command "vbusin current_limit". */
@@ -3299,7 +3335,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin_current_limit,
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 2 command) array for command "vbusin". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin, SHELL_CMD(vbus, &sub_vbusin_status, "Status", NULL),
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin,
+			       SHELL_CMD(status, &sub_vbusin_status, "Status", NULL),
 			       SHELL_CMD(current_limit, &sub_vbusin_current_limit, "Current limit",
 					 NULL),
 			       SHELL_SUBCMD_SET_END);
