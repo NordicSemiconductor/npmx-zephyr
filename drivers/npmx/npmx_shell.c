@@ -42,6 +42,12 @@ typedef enum {
 	SHIP_CONFIG_TYPE_INV_POLARITY /* Device is to invert the SHPHLD button active status. */
 } ship_config_type_t;
 
+/** @brief SHIP reset configuration type. */
+typedef enum {
+	SHIP_RESET_CONFIG_TYPE_LONG_PRESS, /* Use long press (10 s) button. */
+	SHIP_RESET_CONFIG_TYPE_TWO_BUTTONS /* Use two buttons (SHPHLD and GPIO0). */
+} ship_reset_config_type_t;
+
 static const struct device *pmic_dev = DEVICE_DT_GET(DT_NODELABEL(npm_0));
 
 static bool check_error_code(const struct shell *shell, npmx_error_t err_code)
@@ -2917,6 +2923,121 @@ static int cmd_ship_config_inv_polarity_set(const struct shell *shell, size_t ar
 	return ship_config_set(shell, argc, argv, SHIP_CONFIG_TYPE_INV_POLARITY);
 }
 
+static int ship_reset_config_get(const struct shell *shell, ship_reset_config_type_t config_type)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	npmx_ship_reset_config_t reset_config;
+	npmx_ship_t *ship_instance = npmx_ship_get(npmx_instance, 0);
+	npmx_error_t err_code = npmx_ship_reset_config_get(ship_instance, &reset_config);
+
+	if (check_error_code(shell, err_code)) {
+		bool config_val = false;
+
+		switch (config_type) {
+		case SHIP_RESET_CONFIG_TYPE_LONG_PRESS:
+			config_val = reset_config.long_press;
+			break;
+
+		case SHIP_RESET_CONFIG_TYPE_TWO_BUTTONS:
+			config_val = reset_config.two_buttons;
+			break;
+		}
+
+		shell_print(shell, "Value: %u.", config_val);
+	} else {
+		shell_error(shell, "Error: unable to read reset config.");
+	}
+
+	return 0;
+}
+
+static int ship_reset_config_set(const struct shell *shell, size_t argc, char **argv,
+				 ship_reset_config_type_t config_type)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	if (argc < 2) {
+		shell_error(shell, "Error: missing config value.");
+		return 0;
+	}
+
+	int err = 0;
+	uint32_t config_val = shell_strtoul(argv[1], 0, &err);
+
+	if (err != 0) {
+		shell_error(shell, "Error: config value must be an integer.");
+		return 0;
+	}
+
+	npmx_ship_reset_config_t reset_config;
+	npmx_ship_t *ship_instance = npmx_ship_get(npmx_instance, 0);
+
+	npmx_error_t err_code = npmx_ship_reset_config_get(ship_instance, &reset_config);
+
+	if (!check_error_code(shell, err_code)) {
+		shell_error(shell, "Error: unable to read reset config.");
+		return 0;
+	}
+
+	bool val = !!config_val;
+
+	switch (config_type) {
+	case SHIP_RESET_CONFIG_TYPE_LONG_PRESS:
+		reset_config.long_press = val;
+		break;
+	case SHIP_RESET_CONFIG_TYPE_TWO_BUTTONS:
+		reset_config.two_buttons = val;
+		break;
+	}
+
+	err_code = npmx_ship_reset_config_set(ship_instance, &reset_config);
+
+	if (check_error_code(shell, err_code)) {
+		shell_print(shell, "Success: %d.", val);
+	} else {
+		shell_error(shell, "Error: unable to set reset config.");
+	}
+
+	return 0;
+}
+
+static int cmd_ship_reset_long_press_get(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	return ship_reset_config_get(shell, SHIP_RESET_CONFIG_TYPE_LONG_PRESS);
+}
+
+static int cmd_ship_reset_long_press_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return ship_reset_config_set(shell, argc, argv, SHIP_RESET_CONFIG_TYPE_LONG_PRESS);
+}
+
+static int cmd_ship_reset_two_buttons_get(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	return ship_reset_config_get(shell, SHIP_RESET_CONFIG_TYPE_TWO_BUTTONS);
+}
+
+static int cmd_ship_reset_two_buttons_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return ship_reset_config_set(shell, argc, argv, SHIP_RESET_CONFIG_TYPE_TWO_BUTTONS);
+}
+
 static int cmd_reset(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
@@ -3459,8 +3580,31 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_ship_config,
 					 "Button invert polarity", NULL),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 4 command) array for command "ship reset long_press". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ship_reset_long_press,
+			       SHELL_CMD(get, NULL, "Get long press status",
+					 cmd_ship_reset_long_press_get),
+			       SHELL_CMD(set, NULL, "Set long press status",
+					 cmd_ship_reset_long_press_set),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 4 command) array for command "ship reset two_buttons". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ship_reset_two_buttons,
+			       SHELL_CMD(get, NULL, "Get two buttons status",
+					 cmd_ship_reset_two_buttons_get),
+			       SHELL_CMD(set, NULL, "Set two buttons status",
+					 cmd_ship_reset_two_buttons_set),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 3 command) array for command "ship reset". */
+SHELL_STATIC_SUBCMD_SET_CREATE(
+	sub_ship_reset, SHELL_CMD(long_press, &sub_ship_reset_long_press, "Long press", NULL),
+	SHELL_CMD(two_buttons, &sub_ship_reset_two_buttons, "Two buttons", NULL),
+	SHELL_SUBCMD_SET_END);
+
 /* Creating subcommands (level 2 command) array for command "ship". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_ship, SHELL_CMD(config, &sub_ship_config, "Ship config", NULL),
+			       SHELL_CMD(reset, &sub_ship_reset, "Reset button config", NULL),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 1 command) array for command "npmx". */
