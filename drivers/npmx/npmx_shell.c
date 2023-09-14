@@ -2889,7 +2889,7 @@ static int ship_config_set(const struct shell *shell, size_t argc, char **argv,
 	err_code = npmx_ship_config_set(ship_instance, &config);
 
 	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Success: %d.", (int)config_val);
+		shell_print(shell, "Success: %u.", config_val);
 	} else {
 		shell_error(shell, "Error: unable to set config.");
 	}
@@ -3036,6 +3036,44 @@ static int cmd_ship_reset_two_buttons_get(const struct shell *shell, size_t argc
 static int cmd_ship_reset_two_buttons_set(const struct shell *shell, size_t argc, char **argv)
 {
 	return ship_reset_config_set(shell, argc, argv, SHIP_RESET_CONFIG_TYPE_TWO_BUTTONS);
+}
+
+static int ship_mode_set(const struct shell *shell, npmx_ship_task_t ship_task)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	npmx_ship_t *ship_instance = npmx_ship_get(npmx_instance, 0);
+
+	npmx_error_t err_code = npmx_ship_task_trigger(ship_instance, ship_task);
+
+	if (check_error_code(shell, err_code)) {
+		shell_print(shell, "Success: 1.");
+	} else {
+		shell_error(shell, "Error: unable to set mode.");
+	}
+
+	return 0;
+}
+
+static int cmd_ship_mode_ship_set(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	return ship_mode_set(shell, NPMX_SHIP_TASK_SHIPMODE);
+}
+
+static int cmd_ship_mode_hibernate_set(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	return ship_mode_set(shell, NPMX_SHIP_TASK_HIBERNATE);
 }
 
 static int cmd_reset(const struct shell *shell, size_t argc, char **argv)
@@ -3602,9 +3640,17 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD(two_buttons, &sub_ship_reset_two_buttons, "Two buttons", NULL),
 	SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 3 command) array for command "ship mode". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ship_mode,
+			       SHELL_CMD(ship, NULL, "Enter ship mode", cmd_ship_mode_ship_set),
+			       SHELL_CMD(hibernate, NULL, "Enter hibernate mode",
+					 cmd_ship_mode_hibernate_set),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating subcommands (level 2 command) array for command "ship". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_ship, SHELL_CMD(config, &sub_ship_config, "Ship config", NULL),
 			       SHELL_CMD(reset, &sub_ship_reset, "Reset button config", NULL),
+			       SHELL_CMD(mode, &sub_ship_mode, "Set ship mode", NULL),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 1 command) array for command "npmx". */
