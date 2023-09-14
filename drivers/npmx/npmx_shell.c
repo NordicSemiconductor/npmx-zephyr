@@ -2706,6 +2706,80 @@ static int cmd_vbusin_status_connected_get(const struct shell *shell, size_t arg
 	return 0;
 }
 
+static int cmd_vbusin_current_limit_get(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	npmx_vbusin_current_t current_limit;
+	npmx_vbusin_t *vbusin_instance = npmx_vbusin_get(npmx_instance, 0);
+	npmx_error_t err_code = npmx_vbusin_current_limit_get(vbusin_instance, &current_limit);
+
+	if (!check_error_code(shell, err_code)) {
+		shell_error(shell, "Error: unable to read VBUS current limit.");
+		return 0;
+	}
+
+	uint32_t current;
+	err_code = npmx_vbusin_current_convert_to_ma(current_limit, &current);
+
+	if (check_error_code(shell, err_code)) {
+		shell_print(shell, "Value: %u mA.", current);
+	} else {
+		shell_error(shell, "Error: unable to convert VBUS current limit value.");
+	}
+
+	return 0;
+}
+
+static int cmd_vbusin_current_limit_set(const struct shell *shell, size_t argc, char **argv)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	if (argc < 2) {
+		shell_error(shell, "Error: missing current limit value.");
+		return 0;
+	}
+
+	int err = 0;
+	uint32_t current = shell_strtoul(argv[1], 0, &err);
+	npmx_vbusin_t *vbusin_instance = npmx_vbusin_get(npmx_instance, 0);
+
+	if (err != 0) {
+		shell_error(shell, "Error: current limit must be an integer.");
+		return 0;
+	}
+
+	npmx_vbusin_current_t current_limit = npmx_vbusin_current_convert(current);
+
+	if (current_limit == NPMX_VBUSIN_CURRENT_INVALID) {
+		shell_error(shell, "Error: wrong current limit value.");
+		return 0;
+	}
+
+	npmx_error_t err_code = npmx_vbusin_current_limit_set(vbusin_instance, current_limit);
+
+	if (check_error_code(shell, err_code)) {
+		shell_print(shell, "Success: %s mA.", argv[2]);
+	} else {
+		shell_error(shell, "Error: unable to set current limit.");
+	}
+
+	return 0;
+}
+
 static int cmd_reset(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
@@ -3216,8 +3290,18 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin_status,
 					 NULL),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 3 command) array for command "vbusin current_limit". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin_current_limit,
+			       SHELL_CMD(get, NULL, "VBUS current limit get",
+					 cmd_vbusin_current_limit_get),
+			       SHELL_CMD(set, NULL, "VBUS current limit set",
+					 cmd_vbusin_current_limit_set),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating subcommands (level 2 command) array for command "vbusin". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin, SHELL_CMD(vbus, &sub_vbusin_status, "Status", NULL),
+			       SHELL_CMD(current_limit, &sub_vbusin_current_limit, "Current limit",
+					 NULL),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 1 command) array for command "npmx". */
