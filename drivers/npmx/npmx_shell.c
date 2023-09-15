@@ -48,6 +48,12 @@ typedef enum {
 	SHIP_RESET_CONFIG_TYPE_TWO_BUTTONS /* Use two buttons (SHPHLD and GPIO0). */
 } ship_reset_config_type_t;
 
+/** @brief Load switch soft-start configuration type. */
+typedef enum {
+	LDSW_SOFT_START_TYPE_ENABLE, /* Soft-start enable. */
+	LDSW_SOFT_START_TYPE_CURRENT /* Soft-start current. */
+} ldsw_soft_start_config_type_t;
+
 static const struct device *pmic_dev = DEVICE_DT_GET(DT_NODELABEL(npm_0));
 
 static bool check_error_code(const struct shell *shell, npmx_error_t err_code)
@@ -1776,6 +1782,164 @@ static int cmd_ldsw_ldo_voltage_get(const struct shell *shell, size_t argc, char
 	}
 
 	return 0;
+}
+
+static int ldsw_soft_start_config_set(const struct shell *shell, size_t argc, char **argv,
+				      ldsw_soft_start_config_type_t config_type)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+	if (argc < 2) {
+		shell_error(shell, "Error: missing LDSW instance index and config value.");
+		return 0;
+	}
+	if (argc < 3) {
+		shell_error(shell, "Error: missing config value.");
+		return 0;
+	}
+
+	int err = 0;
+	uint8_t ldsw_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
+	uint32_t config_val = (uint32_t)shell_strtoul(argv[2], 0, &err);
+
+	if (err != 0) {
+		shell_error(shell, "Error: instance index and config value must be integers.");
+		return 0;
+	}
+
+	if (ldsw_indx >= NPMX_PERIPH_LDSW_COUNT) {
+		shell_error(shell, "Error: LDSW instance index is too high: no such instance.");
+		return 0;
+	}
+
+	npmx_ldsw_t *ldsw_instance = npmx_ldsw_get(npmx_instance, ldsw_indx);
+	npmx_ldsw_soft_start_config_t soft_start_config;
+	npmx_error_t err_code = npmx_ldsw_soft_start_config_get(ldsw_instance, &soft_start_config);
+
+	if (!check_error_code(shell, err_code)) {
+		shell_error(shell, "Error: unable to read soft-start config.");
+	}
+
+	switch (config_type) {
+	case LDSW_SOFT_START_TYPE_ENABLE:
+		soft_start_config.enable = !!config_val;
+		break;
+
+	case LDSW_SOFT_START_TYPE_CURRENT:
+		npmx_ldsw_soft_start_current_t current =
+			npmx_ldsw_soft_start_current_convert(config_val);
+
+		if (current == NPMX_LDSW_SOFT_START_CURRENT_INVALID) {
+			shell_error(shell, "Error: wrong soft-start value.");
+			return 0;
+		}
+		soft_start_config.current = current;
+		break;
+	}
+
+	err_code = npmx_ldsw_soft_start_config_set(ldsw_instance, &soft_start_config);
+
+	shell_print(shell, "Success: %d.", soft_start_config.enable);
+
+	if (check_error_code(shell, err_code)) {
+		switch (config_type) {
+		case LDSW_SOFT_START_TYPE_ENABLE:
+			shell_print(shell, "Success: %d.", !!config_val);
+			break;
+		case LDSW_SOFT_START_TYPE_CURRENT:
+			shell_print(shell, "Success: %u mA.", config_val);
+			break;
+		}
+	} else {
+		shell_error(shell, "Error: unable to set soft-start value.");
+	}
+
+	return 0;
+}
+
+static int ldsw_soft_start_config_get(const struct shell *shell, size_t argc, char **argv,
+				      ldsw_soft_start_config_type_t config_type)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	if (argc < 2) {
+		shell_error(shell, "Error: missing LDSW instance index.");
+		return 0;
+	}
+
+	int err = 0;
+	uint8_t ldsw_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
+
+	if (err != 0) {
+		shell_error(shell, "Error: LDSW instance must be an integer.");
+		return 0;
+	}
+
+	if (ldsw_indx >= NPMX_PERIPH_LDSW_COUNT) {
+		shell_error(shell, "Error: LDSW instance index is too high: no such instance.");
+		return 0;
+	}
+
+	npmx_ldsw_t *ldsw_instance = npmx_ldsw_get(npmx_instance, ldsw_indx);
+
+	npmx_error_t err_code;
+	npmx_ldsw_soft_start_config_t soft_start_config;
+
+	err_code = npmx_ldsw_soft_start_config_get(ldsw_instance, &soft_start_config);
+
+	if (check_error_code(shell, err_code)) {
+		switch (config_type) {
+		case LDSW_SOFT_START_TYPE_ENABLE:
+			shell_print(shell, "Value: %d.", soft_start_config.enable);
+			break;
+		case LDSW_SOFT_START_TYPE_CURRENT:
+			uint32_t config_val;
+			if (npmx_ldsw_soft_start_current_convert_to_ma(soft_start_config.current,
+								       &config_val)) {
+				shell_print(shell, "Value: %u mA.", config_val);
+			} else {
+				shell_error(
+					shell,
+					"Error: unable to convert current value to milliamperes.");
+			}
+
+			break;
+		}
+
+	} else {
+		shell_error(shell, "Error: unable to read soft-start config.");
+	}
+
+	return 0;
+}
+
+static int cmd_ldsw_soft_start_enable_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return ldsw_soft_start_config_get(shell, argc, argv, LDSW_SOFT_START_TYPE_ENABLE);
+}
+
+static int cmd_ldsw_soft_start_enable_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return ldsw_soft_start_config_set(shell, argc, argv, LDSW_SOFT_START_TYPE_ENABLE);
+}
+
+static int cmd_ldsw_soft_start_current_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return ldsw_soft_start_config_get(shell, argc, argv, LDSW_SOFT_START_TYPE_CURRENT);
+}
+
+static int cmd_ldsw_soft_start_current_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return ldsw_soft_start_config_set(shell, argc, argv, LDSW_SOFT_START_TYPE_CURRENT);
 }
 
 static int cmd_leds_mode_get(const struct shell *shell, size_t argc, char **argv)
@@ -3522,12 +3686,37 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_ldsw_ldo_voltage,
 			       SHELL_CMD(get, NULL, "Get LDO voltage", cmd_ldsw_ldo_voltage_get),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 4 command) array for command "ldsw soft_start enable". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ldsw_soft_start_enable,
+			       SHELL_CMD(get, NULL, "Get soft-start enable status",
+					 cmd_ldsw_soft_start_enable_get),
+			       SHELL_CMD(set, NULL, "Set soft-start enable status",
+					 cmd_ldsw_soft_start_enable_set),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 4 command) array for command "ldsw soft_start current". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ldsw_soft_start_current,
+			       SHELL_CMD(get, NULL, "Get soft-start current status",
+					 cmd_ldsw_soft_start_current_get),
+			       SHELL_CMD(set, NULL, "Set soft-start current status",
+					 cmd_ldsw_soft_start_current_set),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating dictionary subcommands (level 3 command) array for command "ldsw soft_start". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ldsw_soft_start,
+			       SHELL_CMD(enable, &sub_ldsw_soft_start_enable, "Soft-start enable",
+					 NULL),
+			       SHELL_CMD(current, &sub_ldsw_soft_start_current,
+					 "Soft-start current", NULL),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating subcommands (level 2 command) array for command "ldsw". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_ldsw,
 			       SHELL_CMD(set, NULL, "Enable or disable LDSW", cmd_ldsw_set),
 			       SHELL_CMD(get, NULL, "Check if LDSW is enabled", cmd_ldsw_get),
 			       SHELL_CMD(mode, &sub_ldsw_mode, "LDSW mode", NULL),
 			       SHELL_CMD(ldo_voltage, &sub_ldsw_ldo_voltage, "LDO voltage", NULL),
+			       SHELL_CMD(soft_start, &sub_ldsw_soft_start, "Soft-start", NULL),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 3 command) array for command "leds mode". */
