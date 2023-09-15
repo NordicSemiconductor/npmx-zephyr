@@ -1438,6 +1438,102 @@ static int cmd_buck_mode_set(const struct shell *shell, size_t argc, char **argv
 	return 0;
 }
 
+static int cmd_buck_active_discharge_get(const struct shell *shell, size_t argc, char **argv)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	if (argc < 2) {
+		shell_error(shell, "Error: missing buck instance index.");
+		return 0;
+	}
+
+	int err = 0;
+	uint8_t buck_index = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
+
+	if (err != 0) {
+		shell_error(shell, "Error: instance index has to be an integer.");
+		return 0;
+	}
+
+	if (buck_index >= NPMX_PERIPH_BUCK_COUNT) {
+		shell_error(shell, "Error: Buck instance index is too high: no such instance.");
+		return 0;
+	}
+
+	npmx_buck_t *buck_instance = npmx_buck_get(npmx_instance, buck_index);
+	bool discharge_enable;
+
+	npmx_error_t err_code =
+		npmx_buck_active_discharge_enable_get(buck_instance, &discharge_enable);
+
+	if (err_code == NPMX_SUCCESS) {
+		shell_print(shell, "Value: %d.", discharge_enable);
+	} else {
+		shell_error(shell, "Error: unable to read buck active discharge status.");
+	}
+
+	return 0;
+}
+
+static int cmd_buck_active_discharge_set(const struct shell *shell, size_t argc, char **argv)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	if (argc < 2) {
+		shell_error(shell, "Error: missing buck instance index and new status value.");
+		return 0;
+	}
+
+	if (argc < 3) {
+		shell_error(shell, "Error: missing buck instance index.");
+		return 0;
+	}
+
+	int err = 0;
+	uint8_t buck_index = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
+	uint8_t discharge_enable = CLAMP(shell_strtoul(argv[2], 0, &err), 0, UINT8_MAX);
+
+	if (err != 0) {
+		shell_error(shell, "Error: instance index has to be an integer.");
+		return 0;
+	}
+
+	if (buck_index >= NPMX_PERIPH_BUCK_COUNT) {
+		shell_error(shell, "Error: Buck instance index is too high: no such instance.");
+		return 0;
+	}
+
+	if (discharge_enable > 1) {
+		shell_error(
+			shell,
+			"Error: invalid active discharge status. Accepted values: 0 = disabled, 1 = enabled.");
+		return 0;
+	}
+
+	npmx_buck_t *buck_instance = npmx_buck_get(npmx_instance, buck_index);
+
+	npmx_error_t err_code =
+		npmx_buck_active_discharge_enable_set(buck_instance, discharge_enable == 1);
+
+	if (err_code == NPMX_SUCCESS) {
+		shell_print(shell, "Success: %d.", discharge_enable);
+	} else {
+		shell_error(shell, "Error: unable to set buck active discharge status.");
+	}
+
+	return 0;
+}
+
 static int cmd_buck_status_power_get(const struct shell *shell, size_t argc, char **argv)
 {
 	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
@@ -3488,6 +3584,14 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_gpio,
 					 "Select GPIO used as buck's PWM forcing", NULL),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 3 command) array for command "buck active_discharge". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_active_discharge,
+			       SHELL_CMD(get, NULL, "Get active discharge status",
+					 cmd_buck_active_discharge_get),
+			       SHELL_CMD(set, NULL, "Set active discharge status",
+					 cmd_buck_active_discharge_set),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating subcommands (level 4 command) array for command "buck status power". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_status_power,
 			       SHELL_CMD(get, NULL, "Get buck power status",
@@ -3506,6 +3610,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD(voltage, &sub_buck_voltage, "Buck voltage", NULL),
 	SHELL_CMD(gpio, &sub_buck_gpio, "Buck GPIOs", NULL),
 	SHELL_CMD(mode, NULL, "Set buck mode", cmd_buck_mode_set),
+	SHELL_CMD(active_discharge, &sub_buck_active_discharge,
+		  "Enable or disable buck active discharge", NULL),
 	SHELL_CMD(status, &sub_buck_status, "Buck status", NULL), SHELL_SUBCMD_SET_END);
 
 /* Creating dictionary subcommands (level 3 command) array for command "sub_ldsw_mode". */
