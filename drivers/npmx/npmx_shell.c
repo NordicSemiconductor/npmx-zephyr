@@ -710,7 +710,7 @@ static int cmd_ntc_resistance_set(const struct shell *shell, size_t argc, char *
 	}
 
 	int err = 0;
-	uint32_t resistance = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT16_MAX);
+	uint32_t resistance = shell_strtoul(argv[1], 0, &err);
 
 	if (err != 0) {
 		shell_error(shell, "Error: resistance has to be an integer.");
