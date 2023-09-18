@@ -2575,10 +2575,11 @@ static int timer_config_set(const struct shell *shell, size_t argc, char **argv,
 			return 0;
 		}
 	} else if (config_type == NPMX_TIMER_CONFIG_TYPE_COMPARE) {
-		if (input_value <= 0xFFFFFF) {
+		if (input_value <= NPMX_PERIPH_TIMER_COUNTER_COMPARE_VALUE_MAX) {
 			timer_config.compare_value = input_value;
 		} else {
-			shell_error(shell, "Error: timer period value can be 0..0xFFFFFF.");
+			shell_error(shell, "Error: timer period value can be 0..0x%lX.",
+				    NPMX_PERIPH_TIMER_COUNTER_COMPARE_VALUE_MAX);
 			return 0;
 		}
 	}
