@@ -84,8 +84,12 @@ void main(void)
 	/* Apply current limit. */
 	npmx_vbusin_task_trigger(vbusin_instance, NPMX_VBUSIN_TASK_APPLY_CURRENT_LIMIT);
 
-	/* Set NTC type for ADC measurements. */
-	npmx_adc_ntc_set(adc_instance, npmx_adc_ntc_type_convert(CONFIG_THERMISTOR_RESISTANCE));
+	npmx_adc_ntc_config_t ntc_config = { .type = npmx_adc_ntc_type_convert(
+						     CONFIG_THERMISTOR_RESISTANCE),
+					     .beta = CONFIG_THERMISTOR_BETA };
+
+	/* Set thermistor type and NTC beta value for ADC measurements. */
+	npmx_adc_ntc_config_set(adc_instance, &ntc_config);
 
 	/* Enable auto measurement of the battery current after the battery voltage measurement. */
 	npmx_adc_ibat_meas_enable_set(adc_instance, true);
