@@ -3175,7 +3175,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_charger_module_ntc,
 			       SHELL_CMD(get, NULL, "Get NTC status", cmd_charger_module_ntc_get),
 			       SHELL_SUBCMD_SET_END);
 
-/* Creating subcommands (level 4 command) array for command "charger module full_coll". */
+/* Creating subcommands (level 4 command) array for command "charger module full_cool". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_charger_module_full_cool,
 			       SHELL_CMD(set, NULL, "Enable or disable full charge",
 					 cmd_charger_module_full_cool_set),
@@ -3188,7 +3188,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	sub_charger_module, SHELL_CMD(charger, &sub_charger_module_charger, "Charger module", NULL),
 	SHELL_CMD(recharge, &sub_charger_module_recharge, "Recharge module", NULL),
 	SHELL_CMD(ntc, &sub_charger_module_ntc, "NTC module", NULL),
-	SHELL_CMD(ntc, &sub_charger_module_full_cool, "Full charge in cool temp module", NULL),
+	SHELL_CMD(full_cool, &sub_charger_module_full_cool, "Full charge in cool temp module",
+		  NULL),
 	SHELL_SUBCMD_SET_END);
 
 /* Creating dictionary subcommands (level 4 command) array for command "charger trickle set". */
