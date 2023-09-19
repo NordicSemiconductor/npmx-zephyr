@@ -45,12 +45,8 @@ static int read_sensors(npmx_instance_t *const p_pm, float *voltage, float *curr
 	/* Convert current in milliamperes to current in amperes. */
 	*current = (float)meas.values[NPMX_ADC_MEAS_VBAT2_IBAT] / 1000.0f;
 
-	/* Calculate temperature based on the NTC resistance value. Equations taken from datasheet. */
-	int32_t code = (meas.values[NPMX_ADC_MEAS_NTC] * NPMX_PERIPH_ADC_BITS_RESOLUTION) /
-		       (CONFIG_THERMISTOR_RESISTANCE + meas.values[NPMX_ADC_MEAS_NTC]);
-	float log_result = log(((float)NPMX_PERIPH_ADC_BITS_RESOLUTION / (float)code) - 1);
-	float inv_temp_k = (1.f / 298.15f) - (log_result / (float)CONFIG_THERMISTOR_BETA);
-	*temp = (1.f / inv_temp_k) - 273.15f;
+	/* Convert temperature in millidegrees Celsius to temperature in Celsius */
+	*temp = (float)meas.values[NPMX_ADC_MEAS_BAT_TEMP] / 1000.0f;
 
 	/* Convert voltage in millivolts to voltage in volts. */
 	*voltage = (float)meas.values[NPMX_ADC_MEAS_VBAT] / 1000.0f;
