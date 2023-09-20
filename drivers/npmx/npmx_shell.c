@@ -11,6 +11,16 @@
 #include <npmx_driver.h>
 #include <zephyr/kernel.h>
 #include <zephyr/shell/shell.h>
+#include <math.h>
+
+/** @brief The difference in centigrade scale between 0*C to absolute zero temperature. */
+#define ABSOLUTE_ZERO_DIFFERENCE 273.15f
+
+/**
+ * @brief All thermistors values are defined in temperature 25*C.
+ *        For calculations Kelvin scale is required.
+ */
+#define THERMISTOR_NOMINAL_TEMPERATURE (25.0f + ABSOLUTE_ZERO_DIFFERENCE)
 
 /** @brief GPIO configuration type. */
 typedef enum {
@@ -847,6 +857,161 @@ static int cmd_ntc_resistance_hot_set(const struct shell *shell, size_t argc, ch
 static int cmd_ntc_resistance_hot_get(const struct shell *shell, size_t argc, char **argv)
 {
 	return cmd_ntc_resistance_get(shell, argc, argv, npmx_charger_hot_resistance_get);
+}
+
+static int cmd_ntc_temperature_get(const struct shell *shell, size_t argc, char **argv,
+				   npmx_error_t (*func)(npmx_charger_t const *p_instance,
+							uint32_t *resistance))
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	npmx_adc_t *adc_instance = npmx_adc_get(npmx_instance, 0);
+
+	npmx_adc_ntc_config_t ntc_config;
+	npmx_error_t err_code = npmx_adc_ntc_config_get(adc_instance, &ntc_config);
+	if (!check_error_code(shell, err_code)) {
+		shell_error(shell, "Error: unable to read NTC config.");
+		return 0;
+	}
+
+	uint32_t ntc_nominal_resistance;
+	if (!npmx_adc_ntc_type_convert_to_ohms(ntc_config.type, &ntc_nominal_resistance)) {
+		shell_error(shell, "Error: unable to convert NTC type to resistance.");
+		return 0;
+	}
+
+	npmx_charger_t *charger_instance = npmx_charger_get(npmx_instance, 0);
+	uint32_t resistance;
+	err_code = func(charger_instance, &resistance);
+
+	if (check_error_code(shell, err_code)) {
+		float numerator = THERMISTOR_NOMINAL_TEMPERATURE * (float)ntc_config.beta;
+		float denominator = (THERMISTOR_NOMINAL_TEMPERATURE *
+				     log((float)resistance / (float)ntc_nominal_resistance)) +
+				    (float)ntc_config.beta;
+		float temperature = round((numerator / denominator) - ABSOLUTE_ZERO_DIFFERENCE);
+		shell_print(shell, "Value: %d *C.", (int)temperature);
+	} else {
+		shell_error(shell, "Error: unable to read NTC resistance value.");
+	}
+
+	return 0;
+}
+
+static int cmd_ntc_temperature_set(const struct shell *shell, size_t argc, char **argv,
+				   npmx_error_t (*func)(npmx_charger_t const *p_instance,
+							uint32_t p_resistance))
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	if (argc < 2) {
+		shell_error(shell, "Error: missing NTC temperature value.");
+		return 0;
+	}
+
+	int err = 0;
+	int32_t temperature = shell_strtol(argv[1], 0, &err);
+
+	if (err != 0) {
+		shell_error(shell, "Error: NTC temperature has to be an integer.");
+		return 0;
+	}
+
+	npmx_charger_t *charger_instance = npmx_charger_get(npmx_instance, 0);
+	uint32_t modules_mask;
+	npmx_error_t err_code = npmx_charger_module_get(charger_instance, &modules_mask);
+
+	if (!check_error_code(shell, err_code)) {
+		shell_error(shell, "Error: unable to get charger module status.");
+		return 0;
+	}
+
+	if ((modules_mask & NPMX_CHARGER_MODULE_CHARGER_MASK) != 0) {
+		shell_error(shell, "Error: charger must be disabled to set NTC temperature value.");
+		return 0;
+	}
+
+	npmx_adc_t *adc_instance = npmx_adc_get(npmx_instance, 0);
+
+	npmx_adc_ntc_config_t ntc_config;
+	err_code = npmx_adc_ntc_config_get(adc_instance, &ntc_config);
+	if (!check_error_code(shell, err_code)) {
+		shell_error(shell, "Error: unable to read NTC config.");
+		return 0;
+	}
+
+	uint32_t ntc_nominal_resistance;
+	if (!npmx_adc_ntc_type_convert_to_ohms(ntc_config.type, &ntc_nominal_resistance)) {
+		shell_error(shell, "Error: unable to convert NTC type to resistance.");
+		return 0;
+	}
+
+	float target_temperature = ((float)temperature + ABSOLUTE_ZERO_DIFFERENCE);
+	float exp_val = ((1.0f / target_temperature) - (1.0f / THERMISTOR_NOMINAL_TEMPERATURE)) *
+			(float)ntc_config.beta;
+	float resistance = round((float)ntc_nominal_resistance * exp(exp_val));
+
+	err_code = func(charger_instance, (uint32_t)resistance);
+	if (check_error_code(shell, err_code)) {
+		shell_print(shell, "Success: %d *C.", temperature);
+	} else {
+		shell_error(shell, "Error: unable to set NTC temperature value.");
+	}
+
+	return 0;
+}
+
+static int cmd_ntc_temperature_cold_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return cmd_ntc_temperature_set(shell, argc, argv, npmx_charger_cold_resistance_set);
+}
+
+static int cmd_ntc_temperature_cold_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return cmd_ntc_temperature_get(shell, argc, argv, npmx_charger_cold_resistance_get);
+}
+
+static int cmd_ntc_temperature_cool_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return cmd_ntc_temperature_set(shell, argc, argv, npmx_charger_cool_resistance_set);
+}
+
+static int cmd_ntc_temperature_cool_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return cmd_ntc_temperature_get(shell, argc, argv, npmx_charger_cool_resistance_get);
+}
+
+static int cmd_ntc_temperature_warm_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return cmd_ntc_temperature_set(shell, argc, argv, npmx_charger_warm_resistance_set);
+}
+
+static int cmd_ntc_temperature_warm_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return cmd_ntc_temperature_get(shell, argc, argv, npmx_charger_warm_resistance_get);
+}
+
+static int cmd_ntc_temperature_hot_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return cmd_ntc_temperature_set(shell, argc, argv, npmx_charger_hot_resistance_set);
+}
+
+static int cmd_ntc_temperature_hot_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return cmd_ntc_temperature_get(shell, argc, argv, npmx_charger_hot_resistance_get);
 }
 
 static int cmd_charger_discharging_current_get(const struct shell *shell, size_t argc, char **argv)
@@ -3744,6 +3909,47 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD(hot, &sub_ntc_resistance_hot, "NTC resistance value at 60*C", NULL),
 	SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 4 command) array for command "charger ntc_temperature cold". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ntc_temperature_cold,
+			       SHELL_CMD(get, NULL, "Get NTC temperature at cold",
+					 cmd_ntc_temperature_cold_get),
+			       SHELL_CMD(set, NULL, "Set NTC temperature at cold",
+					 cmd_ntc_temperature_cold_set),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 4 command) array for command "charger ntc_temperature cool". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ntc_temperature_cool,
+			       SHELL_CMD(get, NULL, "Get NTC temperature at cool",
+					 cmd_ntc_temperature_cool_get),
+			       SHELL_CMD(set, NULL, "Set NTC temperature at cool",
+					 cmd_ntc_temperature_cool_set),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 4 command) array for command "charger ntc_temperature warm". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ntc_temperature_warm,
+			       SHELL_CMD(get, NULL, "Get NTC temperature at warm",
+					 cmd_ntc_temperature_warm_get),
+			       SHELL_CMD(set, NULL, "Set NTC temperature at warm",
+					 cmd_ntc_temperature_warm_set),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 4 command) array for command "charger ntc_temperature hot". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ntc_temperature_hot,
+			       SHELL_CMD(get, NULL, "Get NTC temperature at hot",
+					 cmd_ntc_temperature_hot_get),
+			       SHELL_CMD(set, NULL, "Set NTC temperature at hot",
+					 cmd_ntc_temperature_hot_set),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 3 command) array for command "charger ntc_temperature". */
+SHELL_STATIC_SUBCMD_SET_CREATE(
+	sub_ntc_temperature,
+	SHELL_CMD(cold, &sub_ntc_temperature_cold, "NTC temperature cold", NULL),
+	SHELL_CMD(cool, &sub_ntc_temperature_cool, "NTC temperature cool", NULL),
+	SHELL_CMD(warm, &sub_ntc_temperature_warm, "NTC temperature warm", NULL),
+	SHELL_CMD(hot, &sub_ntc_temperature_hot, "NTC temperature hot", NULL),
+	SHELL_SUBCMD_SET_END);
+
 /* Creating subcommands (level 3 command) array for command "charger discharging_current". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_charger_discharging_current,
 			       SHELL_CMD(get, NULL, "Get discharging current",
@@ -3753,23 +3959,23 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_charger_discharging_current,
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 2 command) array for command "charger". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_charger,
-			       SHELL_CMD(termination_voltage, &sub_charger_termination_voltage,
-					 "Charger termination voltage", NULL),
-			       SHELL_CMD(termination_current, &sub_charger_termination_current,
-					 "Charger termination current", NULL),
-			       SHELL_CMD(charger_current, &sub_charger_charging_current,
-					 "Charger current", NULL),
-			       SHELL_CMD(status, &sub_charger_status, "Charger status", NULL),
-			       SHELL_CMD(module, &sub_charger_module, "Charger module", NULL),
-			       SHELL_CMD(trickle, &sub_charger_trickle, "Charger trickle voltage",
-					 NULL),
-			       SHELL_CMD(die_temp, &sub_die_temp, "Charger die temperature", NULL),
-			       SHELL_CMD(ntc_resistance, &sub_ntc_resistance,
-					 "Battery NTC resistance values calibration", NULL),
-			       SHELL_CMD(discharging_current, &sub_charger_discharging_current,
-					 "Maximum discharging current", NULL),
-			       SHELL_SUBCMD_SET_END);
+SHELL_STATIC_SUBCMD_SET_CREATE(
+	sub_charger,
+	SHELL_CMD(termination_voltage, &sub_charger_termination_voltage,
+		  "Charger termination voltage", NULL),
+	SHELL_CMD(termination_current, &sub_charger_termination_current,
+		  "Charger termination current", NULL),
+	SHELL_CMD(charger_current, &sub_charger_charging_current, "Charger current", NULL),
+	SHELL_CMD(status, &sub_charger_status, "Charger status", NULL),
+	SHELL_CMD(module, &sub_charger_module, "Charger module", NULL),
+	SHELL_CMD(trickle, &sub_charger_trickle, "Charger trickle voltage", NULL),
+	SHELL_CMD(die_temp, &sub_die_temp, "Charger die temperature", NULL),
+	SHELL_CMD(ntc_resistance, &sub_ntc_resistance, "Battery NTC resistance values calibration",
+		  NULL),
+	SHELL_CMD(ntc_temperature, &sub_ntc_temperature, "Battery NTC temperature values", NULL),
+	SHELL_CMD(discharging_current, &sub_charger_discharging_current,
+		  "Maximum discharging current", NULL),
+	SHELL_SUBCMD_SET_END);
 
 /* Creating dictionary subcommands (level 4 command) array for command "buck vout select". */
 SHELL_STATIC_SUBCMD_SET_CREATE(
