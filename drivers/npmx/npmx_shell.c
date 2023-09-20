@@ -604,7 +604,7 @@ static int cmd_charger_trickle_set(const struct shell *shell, size_t argc, char 
 
 static int cmd_die_temp_set(const struct shell *shell, size_t argc, char **argv,
 			    npmx_error_t (*func)(npmx_charger_t const *p_instance,
-						 uint16_t temperature))
+						 int16_t temperature))
 {
 	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
 
@@ -619,10 +619,12 @@ static int cmd_die_temp_set(const struct shell *shell, size_t argc, char **argv,
 	}
 
 	int err = 0;
-	uint16_t temperature = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT16_MAX);
+	int16_t temperature = (int16_t)CLAMP(shell_strtol(argv[1], 0, &err),
+					     NPMX_PERIPH_CHARGER_DIE_TEMPERATURE_MIN_VAL,
+					     NPMX_PERIPH_CHARGER_DIE_TEMPERATURE_MAX_VAL);
 
 	if (err != 0) {
-		shell_error(shell, "Error: temperature has to be a non-negative integer.");
+		shell_error(shell, "Error: temperature has to be an integer.");
 		return 0;
 	}
 
@@ -652,7 +654,7 @@ static int cmd_die_temp_set(const struct shell *shell, size_t argc, char **argv,
 
 static int cmd_die_temp_get(const struct shell *shell, size_t argc, char **argv,
 			    npmx_error_t (*func)(npmx_charger_t const *p_instance,
-						 uint16_t *temperature))
+						 int16_t *temperature))
 {
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
@@ -665,7 +667,7 @@ static int cmd_die_temp_get(const struct shell *shell, size_t argc, char **argv,
 	}
 
 	npmx_charger_t *charger_instance = npmx_charger_get(npmx_instance, 0);
-	uint16_t temperature;
+	int16_t temperature;
 
 	npmx_error_t err_code = func(charger_instance, &temperature);
 
