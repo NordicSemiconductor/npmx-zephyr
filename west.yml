@@ -28,5 +28,5 @@ manifest:
       remote: zephyrproject
     - name: sdk-nrfxlib
       remote: nrfconnect
-      revision: bb42c9c169177ff96b5f5b055b6c087679bfdcd3
+      revision: v2.4.2
       path: modules/nrfxlib
