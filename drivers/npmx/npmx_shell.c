@@ -1941,8 +1941,6 @@ static int ldsw_soft_start_config_set(const struct shell *shell, size_t argc, ch
 
 	err_code = npmx_ldsw_soft_start_config_set(ldsw_instance, &soft_start_config);
 
-	shell_print(shell, "Success: %d.", soft_start_config.enable);
-
 	if (check_error_code(shell, err_code)) {
 		switch (config_type) {
 		case LDSW_SOFT_START_TYPE_ENABLE:
