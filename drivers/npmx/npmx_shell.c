@@ -4013,8 +4013,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin_current_limit,
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 2 command) array for command "vbusin". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin,
-			       SHELL_CMD(status, &sub_vbusin_status, "Status", NULL),
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin, SHELL_CMD(status, &sub_vbusin_status, "Status", NULL),
 			       SHELL_CMD(current_limit, &sub_vbusin_current_limit, "Current limit",
 					 NULL),
 			       SHELL_SUBCMD_SET_END);
