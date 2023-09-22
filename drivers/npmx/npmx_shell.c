@@ -922,58 +922,6 @@ static int cmd_charger_discharging_current_set(const struct shell *shell, size_t
 	return 0;
 }
 
-static int cmd_buck_set(const struct shell *shell, size_t argc, char **argv)
-{
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
-		return 0;
-	}
-
-	if (argc < 2) {
-		shell_error(shell, "Error: missing buck instance index and new status value.");
-		return 0;
-	}
-
-	if (argc < 3) {
-		shell_error(shell, "Error: missing new status value.");
-		return 0;
-	}
-
-	int err = 0;
-	uint8_t buck_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
-	uint8_t buck_set = CLAMP(shell_strtoul(argv[2], 0, &err), 0, UINT8_MAX);
-
-	if (err != 0) {
-		shell_error(shell, "Error: instance index and status have to be integers.");
-		return 0;
-	}
-
-	if (buck_indx >= NPMX_PERIPH_BUCK_COUNT) {
-		shell_error(shell, "Error: buck instance index is too high: no such instance.");
-		return 0;
-	}
-
-	if (buck_set > 1) {
-		shell_error(shell, "Error: wrong new status value.");
-		return 0;
-	}
-
-	npmx_buck_task_t buck_task = buck_set == 1 ? NPMX_BUCK_TASK_ENABLE : NPMX_BUCK_TASK_DISABLE;
-	npmx_buck_t *buck_instance = npmx_buck_get(npmx_instance, buck_indx);
-
-	npmx_error_t err_code = npmx_buck_task_trigger(buck_instance, buck_task);
-
-	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Success: %d.", buck_set);
-	} else {
-		shell_error(shell, "Error: unable to set buck state.");
-	}
-
-	return 0;
-}
-
 static int cmd_buck_vout_select_get(const struct shell *shell, size_t argc, char **argv)
 {
 	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
@@ -1578,6 +1526,58 @@ static int cmd_buck_status_power_get(const struct shell *shell, size_t argc, cha
 		shell_print(shell, "Buck power status: %d.", buck_status.powered);
 	} else {
 		shell_error(shell, "Error: unable to read buck power status.");
+	}
+
+	return 0;
+}
+
+static int cmd_buck_status_power_set(const struct shell *shell, size_t argc, char **argv)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	if (argc < 2) {
+		shell_error(shell, "Error: missing buck instance index and new status value.");
+		return 0;
+	}
+
+	if (argc < 3) {
+		shell_error(shell, "Error: missing new status value.");
+		return 0;
+	}
+
+	int err = 0;
+	uint8_t buck_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
+	uint8_t buck_set = CLAMP(shell_strtoul(argv[2], 0, &err), 0, UINT8_MAX);
+
+	if (err != 0) {
+		shell_error(shell, "Error: instance index and status have to be integers.");
+		return 0;
+	}
+
+	if (buck_indx >= NPMX_PERIPH_BUCK_COUNT) {
+		shell_error(shell, "Error: buck instance index is too high: no such instance.");
+		return 0;
+	}
+
+	if (buck_set > 1) {
+		shell_error(shell, "Error: wrong new status value.");
+		return 0;
+	}
+
+	npmx_buck_task_t buck_task = buck_set == 1 ? NPMX_BUCK_TASK_ENABLE : NPMX_BUCK_TASK_DISABLE;
+	npmx_buck_t *buck_instance = npmx_buck_get(npmx_instance, buck_indx);
+
+	npmx_error_t err_code = npmx_buck_task_trigger(buck_instance, buck_task);
+
+	if (check_error_code(shell, err_code)) {
+		shell_print(shell, "Success: %d.", buck_set);
+	} else {
+		shell_error(shell, "Error: unable to set buck state.");
 	}
 
 	return 0;
@@ -3760,6 +3760,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_active_discharge,
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_status_power,
 			       SHELL_CMD(get, NULL, "Get buck power status",
 					 cmd_buck_status_power_get),
+			       SHELL_CMD(set, NULL, "Set buck power status",
+					 cmd_buck_status_power_set),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 3 command) array for command "buck status". */
@@ -3769,8 +3771,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_status,
 
 /* Creating subcommands (level 2 command) array for command "buck". */
 SHELL_STATIC_SUBCMD_SET_CREATE(
-	sub_buck, SHELL_CMD(set, NULL, "Enable or disable buck", cmd_buck_set),
-	SHELL_CMD(vout, &sub_buck_vout, "Buck output voltage reference source", NULL),
+	sub_buck, SHELL_CMD(vout, &sub_buck_vout, "Buck output voltage reference source", NULL),
 	SHELL_CMD(voltage, &sub_buck_voltage, "Buck voltage", NULL),
 	SHELL_CMD(gpio, &sub_buck_gpio, "Buck GPIOs", NULL),
 	SHELL_CMD(mode, NULL, "Set buck mode", cmd_buck_mode_set),
