@@ -54,6 +54,12 @@ typedef enum {
 	LDSW_SOFT_START_TYPE_CURRENT /* Soft-start current. */
 } ldsw_soft_start_config_type_t;
 
+/** @brief NTC thermistor configuration parameter. */
+typedef enum {
+	ADC_NTC_CONFIG_PARAM_TYPE, /* Battery NTC type. */
+	ADC_NTC_CONFIG_PARAM_BETA /* Battery NTC beta value. */
+} adc_ntc_config_param_t;
+
 static const struct device *pmic_dev = DEVICE_DT_GET(DT_NODELABEL(npm_0));
 
 static bool check_error_code(const struct shell *shell, npmx_error_t err_code)
@@ -2515,13 +2521,12 @@ static int cmd_gpio_debounce_set(const struct shell *shell, size_t argc, char **
 	return gpio_config_set(shell, argc, argv, GPIO_CONFIG_TYPE_DEBOUNCE);
 }
 
-static int cmd_adc_ntc_get(const struct shell *shell, size_t argc, char **argv)
+static int adc_ntc_get(const struct shell *shell, size_t argc, char **argv,
+		       adc_ntc_config_param_t config_type)
 {
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
-
 	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
 	if (npmx_instance == NULL) {
 		shell_error(shell, "Error: shell is not initialized.");
 		return 0;
@@ -2529,26 +2534,50 @@ static int cmd_adc_ntc_get(const struct shell *shell, size_t argc, char **argv)
 
 	npmx_adc_t *adc_instance = npmx_adc_get(npmx_instance, 0);
 
-	npmx_adc_ntc_type_t ntc_type;
-	npmx_error_t err_code = npmx_adc_ntc_get(adc_instance, &ntc_type);
+	npmx_adc_ntc_config_t ntc_config;
+	npmx_error_t err_code = npmx_adc_ntc_config_get(adc_instance, &ntc_config);
 
 	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Value: %s.", npmx_adc_ntc_type_map_to_string(ntc_type));
+		switch (config_type) {
+		case ADC_NTC_CONFIG_PARAM_TYPE:
+			uint32_t config_value;
+			if (!npmx_adc_ntc_type_convert_to_ohms(ntc_config.type, &config_value)) {
+				shell_error(shell,
+					    "Error: unable to convert NTC type to resistance.");
+				return 0;
+			}
+			shell_print(shell, "Value: %u Ohm.", config_value);
+			break;
+		case ADC_NTC_CONFIG_PARAM_BETA:
+			shell_print(shell, "Value: %u.", ntc_config.beta);
+			break;
+		}
 	} else {
-		shell_error(shell, "Error: unable to read ADC NTC value.");
+		shell_error(shell, "Error: unable to read ADC NTC config value.");
 	}
 
 	return 0;
 }
 
-static int cmd_adc_ntc_set(const struct shell *shell, size_t argc, char **argv, void *data)
+static int adc_ntc_set(const struct shell *shell, size_t argc, char **argv,
+		       adc_ntc_config_param_t config_type)
 {
-	ARG_UNUSED(argc);
-
 	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
 
 	if (npmx_instance == NULL) {
 		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	if (argc < 2) {
+		shell_error(shell, "Error: missing config value.");
+		return 0;
+	}
+
+	int err = 0;
+	uint32_t config_val = shell_strtoul(argv[1], 0, &err);
+	if (err != 0) {
+		shell_error(shell, "Error: config has to be an integer.");
 		return 0;
 	}
 
@@ -2556,60 +2585,117 @@ static int cmd_adc_ntc_set(const struct shell *shell, size_t argc, char **argv, 
 
 	uint32_t modules_mask;
 	npmx_error_t err_code = npmx_charger_module_get(charger_instance, &modules_mask);
-
 	if (!check_error_code(shell, err_code)) {
 		shell_error(shell, "Error: unable to get charger module status.");
 		return 0;
 	}
-
 	if ((modules_mask & NPMX_CHARGER_MODULE_CHARGER_MASK) != 0) {
 		shell_error(shell, "Error: charger must be disabled to set ADC NTC value.");
 		return 0;
 	}
 
-	npmx_adc_ntc_type_t type = (npmx_adc_ntc_type_t)data;
-
-	if (type == NPMX_ADC_NTC_TYPE_HI_Z) {
-		err_code = npmx_charger_module_disable_set(charger_instance,
-							   NPMX_CHARGER_MODULE_NTC_LIMITS_MASK);
-		if (check_error_code(shell, err_code)) {
-			shell_info(
-				shell,
-				"Info: the NTC temperature limit control module has been disabled.");
-			shell_info(shell,
-				   "      To re-enable, change the NTC type to != ntc_hi_z.");
-		} else {
-			shell_error(
-				shell,
-				"Error: unable to disable the NTC temperature limit control module.");
-			return 0;
-		}
-	} else {
-		err_code = npmx_charger_module_enable_set(charger_instance,
-							  NPMX_CHARGER_MODULE_NTC_LIMITS_MASK);
-		if (check_error_code(shell, err_code)) {
-			shell_info(
-				shell,
-				"Info: the NTC temperature limit control module has been enabled.");
-		} else {
-			shell_error(
-				shell,
-				"Error: unable to enable the NTC temperature limit control module.");
-			return 0;
-		}
+	npmx_adc_t *adc_instance = npmx_adc_get(npmx_instance, 0);
+	npmx_adc_ntc_config_t ntc_config;
+	err_code = npmx_adc_ntc_config_get(adc_instance, &ntc_config);
+	if (!check_error_code(shell, err_code)) {
+		shell_error(shell, "Error: unable to read ADC NTC config.");
+		return 0;
 	}
 
-	npmx_adc_t *adc_instance = npmx_adc_get(npmx_instance, 0);
+	switch (config_type) {
+	case ADC_NTC_CONFIG_PARAM_TYPE:
+		ntc_config.type = npmx_adc_ntc_type_convert(config_val);
+		if (ntc_config.type == NPMX_ADC_NTC_TYPE_INVALID) {
+			shell_error(shell, "Error: unable to convert resistance to NTC type.");
+			return 0;
+		}
 
-	err_code = npmx_adc_ntc_set(adc_instance, type);
+		if (ntc_config.type == NPMX_ADC_NTC_TYPE_HI_Z) {
+			err_code = npmx_charger_module_get(charger_instance, &modules_mask);
+			if (!check_error_code(shell, err_code)) {
+				shell_error(shell,
+					    "Error: unable to get NTC limits module status.");
+			}
 
+			if ((modules_mask & NPMX_CHARGER_MODULE_NTC_LIMITS_MASK) == 0) {
+				/* NTC limits module already disabled. */
+				break;
+			}
+
+			err_code = npmx_charger_module_disable_set(
+				charger_instance, NPMX_CHARGER_MODULE_NTC_LIMITS_MASK);
+			if (check_error_code(shell, err_code)) {
+				shell_info(
+					shell,
+					"Info: the NTC temperature limit control module has been disabled.");
+				shell_info(shell,
+					   "      To re-enable, change the NTC type to != 0.");
+			} else {
+				shell_error(
+					shell,
+					"Error: unable to disable the NTC temperature limit control module.");
+				return 0;
+			}
+		} else {
+			err_code = npmx_charger_module_get(charger_instance, &modules_mask);
+			if (!check_error_code(shell, err_code)) {
+				shell_error(shell,
+					    "Error: unable to get NTC limits module status.");
+			}
+
+			if ((modules_mask & NPMX_CHARGER_MODULE_NTC_LIMITS_MASK) > 0) {
+				/* NTC limits module already enabled. */
+				break;
+			}
+
+			err_code = npmx_charger_module_enable_set(
+				charger_instance, NPMX_CHARGER_MODULE_NTC_LIMITS_MASK);
+			if (check_error_code(shell, err_code)) {
+				shell_info(
+					shell,
+					"Info: the NTC temperature limit control module has been enabled.");
+			} else {
+				shell_error(
+					shell,
+					"Error: unable to enable the NTC temperature limit control module.");
+				return 0;
+			}
+		}
+		break;
+
+	case ADC_NTC_CONFIG_PARAM_BETA:
+		ntc_config.beta = config_val;
+		break;
+	}
+
+	err_code = npmx_adc_ntc_config_set(adc_instance, &ntc_config);
 	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Success: %s.", argv[0]);
+		shell_print(shell, "Success: %u.", config_val);
 	} else {
 		shell_error(shell, "Error: unable to set ADC NTC value.");
 	}
 
 	return 0;
+}
+
+static int cmd_adc_ntc_type_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return adc_ntc_get(shell, argc, argv, ADC_NTC_CONFIG_PARAM_TYPE);
+}
+
+static int cmd_adc_ntc_type_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return adc_ntc_set(shell, argc, argv, ADC_NTC_CONFIG_PARAM_TYPE);
+}
+
+static int cmd_adc_ntc_beta_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return adc_ntc_get(shell, argc, argv, ADC_NTC_CONFIG_PARAM_BETA);
+}
+
+static int cmd_adc_ntc_beta_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return adc_ntc_set(shell, argc, argv, ADC_NTC_CONFIG_PARAM_BETA);
 }
 
 static int cmd_adc_meas_take_vbat(const struct shell *shell, size_t argc, char **argv)
@@ -3891,17 +3977,22 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD(debounce, &sub_gpio_debounce, "Debounce configuration", NULL),
 	SHELL_SUBCMD_SET_END);
 
-/* Creating dictionary subcommands (level 4 command) array for command "adc ntc set". */
-SHELL_SUBCMD_DICT_SET_CREATE(adc_ntc_type, cmd_adc_ntc_set,
-			     (ntc_hi_z, NPMX_ADC_NTC_TYPE_HI_Z, "HIGH Z"),
-			     (ntc_10k, NPMX_ADC_NTC_TYPE_10_K, "10k"),
-			     (ntc_47k, NPMX_ADC_NTC_TYPE_47_K, "47k"),
-			     (ntc_100k, NPMX_ADC_NTC_TYPE_100_K, "100k"));
+/* Creating subcommands (level 4 command) array for command "adc ntc type". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_adc_ntc_type,
+			       SHELL_CMD(get, NULL, "Get ADC NTC type", cmd_adc_ntc_type_get),
+			       SHELL_CMD(set, NULL, "Set ADC NTC type", cmd_adc_ntc_type_set),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 4 command) array for command "adc ntc beta". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_adc_ntc_beta,
+			       SHELL_CMD(get, NULL, "Get ADC NTC beta value", cmd_adc_ntc_beta_get),
+			       SHELL_CMD(set, NULL, "Set ADC NTC beta value", cmd_adc_ntc_beta_set),
+			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 3 command) array for command "adc ntc". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_adc_ntc,
-			       SHELL_CMD(get, NULL, "Get ADC NTC value", cmd_adc_ntc_get),
-			       SHELL_CMD(set, &adc_ntc_type, "Set ADC NTC value", NULL),
+			       SHELL_CMD(type, &sub_adc_ntc_type, "ADC NTC type", NULL),
+			       SHELL_CMD(beta, &sub_adc_ntc_beta, "ADC NTC beta", NULL),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 4 command) array for command "adc take meas". */
