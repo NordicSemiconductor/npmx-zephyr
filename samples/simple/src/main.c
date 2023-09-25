@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Nordic Semiconductor ASA
+ * Copyright (c) 2022-2023 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -94,8 +94,10 @@ void main(void)
 	npmx_led_mode_set(npmx_led_get(npmx_instance, 1), NPMX_LED_MODE_ERROR);
 	npmx_led_mode_set(npmx_led_get(npmx_instance, 2), NPMX_LED_MODE_NOTUSED);
 
-	/* Set NTC type for ADC measurements. */
-	npmx_adc_ntc_set(npmx_adc_get(npmx_instance, 0), NPMX_ADC_NTC_TYPE_10_K);
+	npmx_adc_ntc_config_t ntc_config = { .type = NPMX_ADC_NTC_TYPE_10_K, .beta = 0 };
+
+	/* Set thermistor type for charger module NTC. Beta value is not used. */
+	npmx_adc_ntc_config_set(npmx_adc_get(npmx_instance, 0), &ntc_config);
 
 	while (1) {
 		k_sleep(K_FOREVER);

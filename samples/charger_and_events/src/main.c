@@ -367,8 +367,10 @@ void main(void)
 	npmx_core_event_interrupt_enable(npmx_instance, NPMX_EVENT_GROUP_ADC,
 					 NPMX_EVENT_GROUP_ADC_BAT_READY_MASK);
 
-	/* Set NTC type for ADC measurements. */
-	npmx_adc_ntc_set(npmx_adc_get(npmx_instance, 0), NPMX_ADC_NTC_TYPE_10_K);
+	npmx_adc_ntc_config_t ntc_config = { .type = NPMX_ADC_NTC_TYPE_10_K, .beta = 0 };
+
+	/* Set thermistor type for ADC measurements. Beta value is not used. */
+	npmx_adc_ntc_config_set(npmx_adc_get(npmx_instance, 0), &ntc_config);
 
 	/* Enable ADC auto measurements every ~1 s (default). */
 	npmx_adc_config_t config = { .vbat_auto = true, .vbat_burst = false };
