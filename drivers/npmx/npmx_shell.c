@@ -3036,6 +3036,26 @@ static int cmd_pof_threshold_get(const struct shell *shell, size_t argc, char **
 	return pof_config_get(shell, POF_CONFIG_PARAM_THRESHOLD);
 }
 
+static int cmd_reset(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+	if (npmx_instance == NULL) {
+		return 0;
+	}
+
+	npmx_error_t err_code = npmx_core_task_trigger(npmx_instance, NPMX_CORE_TASK_RESET);
+	if (!check_error_code(shell, err_code)) {
+		shell_error(shell, "Error: unable to reset device.");
+		return 0;
+	}
+
+	shell_print(shell, "Success: resetting.");
+	return 0;
+}
+
 static int ship_config_set(const struct shell *shell, size_t argc, char **argv,
 			   ship_config_param_t config_type)
 {
@@ -3559,29 +3579,6 @@ static int cmd_vbusin_status_connected_get(const struct shell *shell, size_t arg
 	}
 
 	print_value(shell, !!(status_mask & NPMX_VBUSIN_STATUS_CONNECTED_MASK), UNIT_TYPE_NONE);
-	return 0;
-}
-
-static int cmd_reset(const struct shell *shell, size_t argc, char **argv)
-{
-	ARG_UNUSED(argc);
-	ARG_UNUSED(argv);
-
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
-		return 0;
-	}
-
-	npmx_error_t err_code = npmx_core_task_trigger(npmx_instance, NPMX_CORE_TASK_RESET);
-
-	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Success: restarting.");
-	} else {
-		shell_error(shell, "Error: unable to restart device.");
-	}
-
 	return 0;
 }
 
@@ -4259,9 +4256,9 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD(errlog, &sub_errlog, "Reset errors logs", NULL),
 	SHELL_CMD(gpio, &sub_gpio, "GPIO", NULL), SHELL_CMD(ldsw, &sub_ldsw, "LDSW", NULL),
 	SHELL_CMD(led, &sub_led, "LED", NULL), SHELL_CMD(pof, &sub_pof, "POF", NULL),
-	SHELL_CMD(ship, &sub_ship, "SHIP", NULL), SHELL_CMD(timer, &sub_timer, "Timer", NULL),
-	SHELL_CMD(vbusin, &sub_vbusin, "VBUSIN", NULL),
-	SHELL_CMD(reset, NULL, "Restart device", cmd_reset), SHELL_SUBCMD_SET_END);
+	SHELL_CMD(reset, NULL, "Reset device", cmd_reset), SHELL_CMD(ship, &sub_ship, "SHIP", NULL),
+	SHELL_CMD(timer, &sub_timer, "Timer", NULL), SHELL_CMD(vbusin, &sub_vbusin, "VBUSIN", NULL),
+	SHELL_SUBCMD_SET_END);
 
 /* Creating root (level 0) command "npmx" without a handler. */
 SHELL_CMD_REGISTER(npmx, &sub_npmx, "npmx", NULL);
