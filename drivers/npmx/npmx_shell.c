@@ -351,6 +351,14 @@ static npmx_ldsw_t *ldsw_instance_get(const struct shell *shell, uint32_t index)
 	return (npmx_instance && status) ? npmx_ldsw_get(npmx_instance, (uint8_t)index) : NULL;
 }
 
+static npmx_led_t *led_instance_get(const struct shell *shell, uint32_t index)
+{
+	npmx_instance_t *npmx_instance = npmx_instance_get(shell);
+	bool status = check_instance_index(shell, "LED", index, NPM_LEDDRV_COUNT);
+
+	return (npmx_instance && status) ? npmx_led_get(npmx_instance, (uint8_t)index) : NULL;
+}
+
 static bool check_pin_configuration_correctness(const struct shell *shell, int8_t gpio_idx)
 {
 	int8_t pmic_int_pin = (int8_t)npmx_driver_int_pin_get(pmic_dev);
@@ -2748,161 +2756,106 @@ static int cmd_ldsw_status_get(const struct shell *shell, size_t argc, char **ar
 	return 0;
 }
 
-static int cmd_leds_mode_get(const struct shell *shell, size_t argc, char **argv)
+static int cmd_led_mode_set(const struct shell *shell, size_t argc, char **argv)
 {
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
+	args_info_t args_info = { .expected_args = 2,
+				  .arg = {
+					  [0] = { SHELL_ARG_TYPE_UINT32_INDEX, "LED" },
+					  [1] = { SHELL_ARG_TYPE_UINT32_VALUE, "mode" },
+				  } };
+	if (!arguments_check(shell, argc, argv, &args_info)) {
 		return 0;
 	}
 
-	if (argc < 2) {
-		shell_error(shell, "Error: missing LED instance index.");
+	npmx_led_t *led_instance = led_instance_get(shell, args_info.arg[0].result.uvalue);
+	if (led_instance == NULL) {
 		return 0;
 	}
 
-	int err = 0;
-	uint8_t led_idx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
-
-	if (err != 0) {
-		shell_error(shell, "Error: LED instance index must be an integer.");
+	uint32_t mode = args_info.arg[1].result.uvalue;
+	npmx_led_mode_t led_mode;
+	switch (mode) {
+	case 0:
+		led_mode = NPMX_LED_MODE_ERROR;
+		break;
+	case 1:
+		led_mode = NPMX_LED_MODE_CHARGING;
+		break;
+	case 2:
+		led_mode = NPMX_LED_MODE_HOST;
+		break;
+	case 3:
+		led_mode = NPMX_LED_MODE_NOTUSED;
+		break;
+	default:
+		shell_error(shell, "Error: Wrong mode:");
+		print_hint_error(shell, 0, "Charger error");
+		print_hint_error(shell, 1, "Charging");
+		print_hint_error(shell, 2, "Host");
+		print_hint_error(shell, 3, "Not used");
 		return 0;
 	}
 
-	if (led_idx >= NPM_LEDDRV_COUNT) {
-		shell_error(shell, "Error: LED instance index is too high: no such instance.");
+	npmx_error_t err_code = npmx_led_mode_set(led_instance, led_mode);
+	if (!check_error_code(shell, err_code)) {
+		print_set_error(shell, "LED mode");
 		return 0;
 	}
 
-	npmx_led_t *led_instance = npmx_led_get(npmx_instance, led_idx);
+	print_success(shell, mode, UNIT_TYPE_NONE);
+	return 0;
+}
+
+static int cmd_led_mode_get(const struct shell *shell, size_t argc, char **argv)
+{
+	args_info_t args_info = { .expected_args = 1,
+				  .arg = {
+					  [0] = { SHELL_ARG_TYPE_UINT32_INDEX, "LED" },
+				  } };
+	if (!arguments_check(shell, argc, argv, &args_info)) {
+		return 0;
+	}
+
+	npmx_led_t *led_instance = led_instance_get(shell, args_info.arg[0].result.uvalue);
+	if (led_instance == NULL) {
+		return 0;
+	}
 
 	npmx_led_mode_t mode;
 	npmx_error_t err_code = npmx_led_mode_get(led_instance, &mode);
-
-	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Value: %d.", mode);
-	} else {
-		shell_error(shell, "Error: unable to read LED %d mode.", led_idx);
+	if (!check_error_code(shell, err_code)) {
+		print_get_error(shell, "LED mode");
+		return 0;
 	}
 
+	print_value(shell, (int)mode, UNIT_TYPE_NONE);
 	return 0;
 }
 
-static int cmd_leds_mode_set(const struct shell *shell, size_t argc, char **argv)
+static int cmd_led_state_set(const struct shell *shell, size_t argc, char **argv)
 {
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
+	args_info_t args_info = { .expected_args = 2,
+				  .arg = {
+					  [0] = { SHELL_ARG_TYPE_UINT32_INDEX, "LED" },
+					  [1] = { SHELL_ARG_TYPE_BOOL_VALUE, "state" },
+				  } };
+	if (!arguments_check(shell, argc, argv, &args_info)) {
 		return 0;
 	}
 
-	if (argc < 2) {
-		shell_error(shell, "Error: missing LED instance index and LED mode.");
+	npmx_led_t *led_instance = led_instance_get(shell, args_info.arg[0].result.uvalue);
+	if (led_instance == NULL) {
 		return 0;
 	}
 
-	if (argc < 3) {
-		shell_error(shell, "Error: missing LED mode.");
+	bool led_state = args_info.arg[1].result.bvalue;
+	npmx_error_t err_code = npmx_led_state_set(led_instance, led_state);
+	if (!check_error_code(shell, err_code)) {
+		print_set_error(shell, "LED state");
 		return 0;
 	}
 
-	int err = 0;
-	uint8_t led_idx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
-	int led_mode = shell_strtol(argv[2], 0, &err);
-
-	if (err != 0) {
-		shell_error(shell, "Error: instance index and mode have to be integers.");
-		return 0;
-	}
-
-	if (led_idx >= NPM_LEDDRV_COUNT) {
-		shell_error(shell, "Error: LED instance index is too high: no such instance.");
-		return 0;
-	}
-
-	npmx_led_t *led_instance = npmx_led_get(npmx_instance, led_idx);
-	npmx_led_mode_t mode;
-
-	switch (led_mode) {
-	case 0:
-		mode = NPMX_LED_MODE_ERROR;
-		break;
-	case 1:
-		mode = NPMX_LED_MODE_CHARGING;
-		break;
-	case 2:
-		mode = NPMX_LED_MODE_HOST;
-		break;
-	case 3:
-		mode = NPMX_LED_MODE_NOTUSED;
-		break;
-	default:
-		shell_error(
-			shell,
-			"Error: LED mode can be 0-Charger error, 1-Charging, 2-HOST, 3-Not used.");
-		return 0;
-	}
-
-	npmx_error_t err_code = npmx_led_mode_set(led_instance, mode);
-
-	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Success: %d.", led_mode);
-	} else {
-		shell_error(shell, "Error: unable to set LED %d mode.", led_idx);
-	}
-
-	return 0;
-}
-
-static int cmd_leds_state_set(const struct shell *shell, size_t argc, char **argv)
-{
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
-		return 0;
-	}
-
-	if (argc < 2) {
-		shell_error(shell, "Error: missing LED instance index and LED state.");
-		return 0;
-	}
-
-	if (argc < 3) {
-		shell_error(shell, "Error: missing LED state.");
-		return 0;
-	}
-
-	int err = 0;
-	uint8_t led_idx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
-	uint8_t led_state = CLAMP(shell_strtoul(argv[2], 0, &err), 0, UINT8_MAX);
-
-	if (err != 0) {
-		shell_error(shell, "Error: instance index and state have to be integers.");
-		return 0;
-	}
-
-	if (led_idx >= NPM_LEDDRV_COUNT) {
-		shell_error(shell, "Error: LED instance index is too high: no such instance.");
-		return 0;
-	}
-
-	if (led_state > 1) {
-		shell_error(shell, "Error: invalid LED state value (0 -> OFF, 1 -> ON).");
-		return 0;
-	}
-
-	npmx_led_t *led_instance = npmx_led_get(npmx_instance, led_idx);
-	npmx_error_t err_code = npmx_led_state_set(led_instance, (led_state == 1 ? true : false));
-
-	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Success: %d.", led_state);
-	} else {
-		shell_error(shell, "Error: unable to set LED %d state.", led_idx);
-	}
-
+	print_success(shell, led_state, UNIT_TYPE_NONE);
 	return 0;
 }
 
@@ -4178,20 +4131,19 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD(soft_start, &sub_ldsw_soft_start, "LDSW soft-start", NULL),
 	SHELL_CMD(status, &sub_ldsw_status, "LDSW status", NULL), SHELL_SUBCMD_SET_END);
 
-/* Creating subcommands (level 3 command) array for command "leds mode". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_leds_mode,
-			       SHELL_CMD(get, NULL, "Get LEDs mode", cmd_leds_mode_get),
-			       SHELL_CMD(set, NULL, "Set LEDs mode", cmd_leds_mode_set),
+/* Creating subcommands (level 3 command) array for command "led mode". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_led_mode, SHELL_CMD(set, NULL, "Set LED mode", cmd_led_mode_set),
+			       SHELL_CMD(get, NULL, "Get LED mode", cmd_led_mode_get),
 			       SHELL_SUBCMD_SET_END);
 
-/* Creating subcommands (level 3 command) array for command "leds state". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_leds_state,
-			       SHELL_CMD(set, NULL, "Set LEDs state", cmd_leds_state_set),
+/* Creating subcommands (level 3 command) array for command "led state". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_led_state,
+			       SHELL_CMD(set, NULL, "Set LED status", cmd_led_state_set),
 			       SHELL_SUBCMD_SET_END);
 
-/* Creating subcommands (level 2 command) array for command "leds". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_leds, SHELL_CMD(mode, &sub_leds_mode, "LEDs mode", NULL),
-			       SHELL_CMD(state, &sub_leds_state, "LEDs state", NULL),
+/* Creating subcommands (level 2 command) array for command "led". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_led, SHELL_CMD(mode, &sub_led_mode, "LED mode", NULL),
+			       SHELL_CMD(state, &sub_led_state, "LED state", NULL),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 3 command) array for command "pof enable". */
@@ -4350,7 +4302,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD(charger, &sub_charger, "Charger", NULL),
 	SHELL_CMD(errlog, &sub_errlog, "Reset errors logs", NULL),
 	SHELL_CMD(gpio, &sub_gpio, "GPIO", NULL), SHELL_CMD(ldsw, &sub_ldsw, "LDSW", NULL),
-	SHELL_CMD(leds, &sub_leds, "LEDs", NULL), SHELL_CMD(pof, &sub_pof, "POF", NULL),
+	SHELL_CMD(led, &sub_led, "LED", NULL), SHELL_CMD(pof, &sub_pof, "POF", NULL),
 	SHELL_CMD(timer, &sub_timer, "Timer", NULL), SHELL_CMD(vbusin, &sub_vbusin, "VBUSIN", NULL),
 	SHELL_CMD(ship, &sub_ship, "SHIP", NULL),
 	SHELL_CMD(reset, NULL, "Restart device", cmd_reset), SHELL_SUBCMD_SET_END);
