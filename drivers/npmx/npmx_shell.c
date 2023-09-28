@@ -38,12 +38,12 @@ typedef enum {
 	LDSW_SOFT_START_PARAM_CURRENT /* Soft-start current. */
 } ldsw_soft_start_config_param_t;
 
-/** @brief POF configuration type. */
+/** @brief POF config parameter. */
 typedef enum {
-	POF_CONFIG_TYPE_ENABLE, /* Enable POF. */
-	POF_CONFIG_TYPE_POLARITY, /* POF polarity. */
-	POF_CONFIG_TYPE_THRESHOLD, /* POF threshold value. */
-} pof_config_type_t;
+	POF_CONFIG_PARAM_POLARITY, /* POF polarity. */
+	POF_CONFIG_PARAM_STATUS, /* Enable POF. */
+	POF_CONFIG_PARAM_THRESHOLD, /* POF threshold value. */
+} pof_config_param_t;
 
 /** @brief Timer configuration type. */
 typedef enum {
@@ -357,6 +357,13 @@ static npmx_led_t *led_instance_get(const struct shell *shell, uint32_t index)
 	bool status = check_instance_index(shell, "LED", index, NPM_LEDDRV_COUNT);
 
 	return (npmx_instance && status) ? npmx_led_get(npmx_instance, (uint8_t)index) : NULL;
+}
+
+static npmx_pof_t *pof_instance_get(const struct shell *shell)
+{
+	npmx_instance_t *npmx_instance = npmx_instance_get(shell);
+
+	return npmx_instance ? npmx_pof_get(npmx_instance, 0) : NULL;
 }
 
 static bool check_pin_configuration_correctness(const struct shell *shell, int8_t gpio_idx)
@@ -2859,146 +2866,119 @@ static int cmd_led_state_set(const struct shell *shell, size_t argc, char **argv
 	return 0;
 }
 
-static int pof_config_get(const struct shell *shell, pof_config_type_t config_type)
-{
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
-		return 0;
-	}
-
-	npmx_pof_t *pof_instance = npmx_pof_get(npmx_instance, 0);
-
-	npmx_pof_config_t pof_config;
-	npmx_error_t err_code = npmx_pof_config_get(pof_instance, &pof_config);
-
-	if (check_error_code(shell, err_code)) {
-		switch (config_type) {
-		case POF_CONFIG_TYPE_ENABLE:
-			shell_print(shell, "Value: %d.", (int)pof_config.status);
-			break;
-		case POF_CONFIG_TYPE_POLARITY:
-			shell_print(shell, "Value: %d.", (int)pof_config.polarity);
-			break;
-		case POF_CONFIG_TYPE_THRESHOLD:
-			uint32_t mvolts;
-			if (npmx_pof_threshold_convert_to_mv(pof_config.threshold, &mvolts)) {
-				shell_print(shell, "Value: %d mV.", mvolts);
-			} else {
-				shell_error(
-					shell,
-					"Error: unable to convert threshold value to millivolts.");
-			}
-			break;
-		}
-	} else {
-		shell_error(shell, "Error: unable to read POF config.");
-	}
-
-	return 0;
-}
-
 static int pof_config_set(const struct shell *shell, size_t argc, char **argv,
-			  pof_config_type_t config_type)
+			  pof_config_param_t config_type)
 {
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+	char *config_name;
+	shell_arg_type_t arg_type = SHELL_ARG_TYPE_UINT32_VALUE;
+	unit_type_t unit_type = UNIT_TYPE_NONE;
+	switch (config_type) {
+	case POF_CONFIG_PARAM_POLARITY:
+		config_name = "polarity";
+		break;
+	case POF_CONFIG_PARAM_STATUS:
+		config_name = "status";
+		arg_type = SHELL_ARG_TYPE_BOOL_VALUE;
+		break;
+	case POF_CONFIG_PARAM_THRESHOLD:
+		config_name = "threshold";
+		unit_type = UNIT_TYPE_MILLIVOLT;
+		break;
+	}
 
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
+	args_info_t args_info = { .expected_args = 1,
+				  .arg = {
+					  [0] = { arg_type, config_name },
+				  } };
+	if (!arguments_check(shell, argc, argv, &args_info)) {
 		return 0;
 	}
 
-	if (argc < 2) {
-		switch (config_type) {
-		case POF_CONFIG_TYPE_ENABLE:
-			shell_error(shell, "Error: missing enable value.");
-			return 0;
-		case POF_CONFIG_TYPE_POLARITY:
-			shell_error(shell, "Error: missing polarity value.");
-			return 0;
-		case POF_CONFIG_TYPE_THRESHOLD:
-			shell_error(shell, "Error: missing threshold value.");
-			return 0;
-		default:
-			shell_error(shell, "Error: invalid config type.");
-			return 0;
-		}
-	}
-
-	int err = 0;
-	uint32_t value = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT32_MAX);
-
-	if (err != 0) {
-		shell_error(shell, "Error: value must be an integer.");
+	npmx_pof_t *pof_instance = pof_instance_get(shell);
+	if (pof_instance == NULL) {
 		return 0;
 	}
-
-	npmx_pof_t *pof_instance = npmx_pof_get(npmx_instance, 0);
 
 	npmx_pof_config_t pof_config;
 	npmx_error_t err_code = npmx_pof_config_get(pof_instance, &pof_config);
-
 	if (!check_error_code(shell, err_code)) {
-		shell_error(shell, "Error: unable to get POF config.");
+		print_get_error(shell, "POF config");
+		return 0;
 	}
 
+	shell_arg_result_t result = args_info.arg[0].result;
 	switch (config_type) {
-	case POF_CONFIG_TYPE_ENABLE:
-		if (value < NPMX_POF_STATUS_COUNT) {
-			pof_config.status =
-				(value ? NPMX_POF_STATUS_ENABLE : NPMX_POF_STATUS_DISABLE);
-		} else {
-			shell_error(shell, "Error: enable value can be 0-Disable, 1-Enable.");
+	case POF_CONFIG_PARAM_POLARITY:
+		uint32_t polarity = result.uvalue;
+		if (polarity >= NPMX_POF_POLARITY_COUNT) {
+			shell_error(shell, "Error: Wrong polarity:");
+			print_hint_error(shell, 0, "Active low");
+			print_hint_error(shell, 1, "Active high");
 			return 0;
 		}
+		pof_config.polarity =
+			(polarity == 1) ? NPMX_POF_POLARITY_HIGH : NPMX_POF_POLARITY_LOW;
 		break;
-	case POF_CONFIG_TYPE_POLARITY:
-		if (value < NPMX_POF_POLARITY_COUNT) {
-			pof_config.polarity =
-				(value ? NPMX_POF_POLARITY_HIGH : NPMX_POF_POLARITY_LOW);
-		} else {
-			shell_error(shell,
-				    "Error: polarity value can be 0-Active low, 1-Active high.");
-			return 0;
-		}
+	case POF_CONFIG_PARAM_STATUS:
+		bool status = result.bvalue;
+		pof_config.status = status ? NPMX_POF_STATUS_ENABLE : NPMX_POF_STATUS_DISABLE;
 		break;
-	case POF_CONFIG_TYPE_THRESHOLD:
-		pof_config.threshold = npmx_pof_threshold_convert(value);
+	case POF_CONFIG_PARAM_THRESHOLD:
+		uint32_t threshold = result.uvalue;
+		pof_config.threshold = npmx_pof_threshold_convert(threshold);
 		if (pof_config.threshold == NPMX_POF_THRESHOLD_INVALID) {
-			shell_error(
-				shell,
-				"Error: threshold value can be between 2600mV and 3500mV, in increments of 100mV.");
+			print_convert_error(shell, "millivolts", "threshold");
 			return 0;
 		}
 		break;
-	default:
-		shell_error(shell, "Error: invalid config type.");
-		return 0;
 	}
 
 	err_code = npmx_pof_config_set(pof_instance, &pof_config);
-
-	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Success: %d.", value);
-	} else {
-		shell_error(shell, "Error: unable to set POF config.");
+	if (!check_error_code(shell, err_code)) {
+		print_set_error(shell, "POF config");
+		return 0;
 	}
 
+	print_success(shell, result.ivalue, unit_type);
 	return 0;
 }
 
-static int cmd_pof_enable_get(const struct shell *shell, size_t argc, char **argv)
+static int pof_config_get(const struct shell *shell, pof_config_param_t config_type)
 {
-	ARG_UNUSED(argc);
-	ARG_UNUSED(argv);
+	npmx_pof_t *pof_instance = pof_instance_get(shell);
+	if (pof_instance == NULL) {
+		return 0;
+	}
 
-	return pof_config_get(shell, POF_CONFIG_TYPE_ENABLE);
+	npmx_pof_config_t pof_config;
+	npmx_error_t err_code = npmx_pof_config_get(pof_instance, &pof_config);
+	if (!check_error_code(shell, err_code)) {
+		print_get_error(shell, "POF config");
+		return 0;
+	}
+
+	switch (config_type) {
+	case POF_CONFIG_PARAM_POLARITY:
+		print_value(shell, pof_config.polarity, UNIT_TYPE_NONE);
+		break;
+	case POF_CONFIG_PARAM_STATUS:
+		print_value(shell, pof_config.status, UNIT_TYPE_NONE);
+		break;
+	case POF_CONFIG_PARAM_THRESHOLD:
+		uint32_t voltage_mv;
+		if (!npmx_pof_threshold_convert_to_mv(pof_config.threshold, &voltage_mv)) {
+			print_convert_error(shell, "threshold", "millivolts");
+			return 0;
+		}
+		print_value(shell, voltage_mv, UNIT_TYPE_MILLIVOLT);
+		break;
+	}
+	return 0;
 }
 
-static int cmd_pof_enable_set(const struct shell *shell, size_t argc, char **argv)
+static int cmd_pof_polarity_set(const struct shell *shell, size_t argc, char **argv)
 {
-	return pof_config_set(shell, argc, argv, POF_CONFIG_TYPE_ENABLE);
+	return pof_config_set(shell, argc, argv, POF_CONFIG_PARAM_POLARITY);
 }
 
 static int cmd_pof_polarity_get(const struct shell *shell, size_t argc, char **argv)
@@ -3006,12 +2986,25 @@ static int cmd_pof_polarity_get(const struct shell *shell, size_t argc, char **a
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
-	return pof_config_get(shell, POF_CONFIG_TYPE_POLARITY);
+	return pof_config_get(shell, POF_CONFIG_PARAM_POLARITY);
 }
 
-static int cmd_pof_polarity_set(const struct shell *shell, size_t argc, char **argv)
+static int cmd_pof_status_set(const struct shell *shell, size_t argc, char **argv)
 {
-	return pof_config_set(shell, argc, argv, POF_CONFIG_TYPE_POLARITY);
+	return pof_config_set(shell, argc, argv, POF_CONFIG_PARAM_STATUS);
+}
+
+static int cmd_pof_status_get(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	return pof_config_get(shell, POF_CONFIG_PARAM_STATUS);
+}
+
+static int cmd_pof_threshold_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return pof_config_set(shell, argc, argv, POF_CONFIG_PARAM_THRESHOLD);
 }
 
 static int cmd_pof_threshold_get(const struct shell *shell, size_t argc, char **argv)
@@ -3019,12 +3012,7 @@ static int cmd_pof_threshold_get(const struct shell *shell, size_t argc, char **
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
-	return pof_config_get(shell, POF_CONFIG_TYPE_THRESHOLD);
-}
-
-static int cmd_pof_threshold_set(const struct shell *shell, size_t argc, char **argv)
-{
-	return pof_config_set(shell, argc, argv, POF_CONFIG_TYPE_THRESHOLD);
+	return pof_config_get(shell, POF_CONFIG_PARAM_THRESHOLD);
 }
 
 static npmx_timer_mode_t timer_mode_int_convert_to_enum(uint32_t timer_mode)
@@ -4146,29 +4134,30 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_led, SHELL_CMD(mode, &sub_led_mode, "LED mode
 			       SHELL_CMD(state, &sub_led_state, "LED state", NULL),
 			       SHELL_SUBCMD_SET_END);
 
-/* Creating subcommands (level 3 command) array for command "pof enable". */
-SHELL_STATIC_SUBCMD_SET_CREATE(
-	sub_pof_enable, SHELL_CMD(get, NULL, "Check if POF feature is enabled", cmd_pof_enable_get),
-	SHELL_CMD(set, NULL, "Enable or disable POF", cmd_pof_enable_set), SHELL_SUBCMD_SET_END);
-
 /* Creating subcommands (level 3 command) array for command "pof polarity". */
 SHELL_STATIC_SUBCMD_SET_CREATE(
-	sub_pof_polarity, SHELL_CMD(get, NULL, "Get POF warning polarity", cmd_pof_polarity_get),
-	SHELL_CMD(set, NULL, "Set POF warning polarity", cmd_pof_polarity_set),
+	sub_pof_polarity, SHELL_CMD(set, NULL, "Set POF warning polarity", cmd_pof_polarity_set),
+	SHELL_CMD(get, NULL, "Get POF warning polarity", cmd_pof_polarity_get),
 	SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 3 command) array for command "pof status". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_pof_status,
+			       SHELL_CMD(set, NULL, "Set POF status", cmd_pof_status_set),
+			       SHELL_CMD(get, NULL, "Get POF status", cmd_pof_status_get),
+			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 3 command) array for command "pof threshold". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_pof_threshold,
-			       SHELL_CMD(get, NULL, "Get Vsys comparator threshold",
-					 cmd_pof_threshold_get),
 			       SHELL_CMD(set, NULL, "Set Vsys comparator threshold",
 					 cmd_pof_threshold_set),
+			       SHELL_CMD(get, NULL, "Get Vsys comparator threshold",
+					 cmd_pof_threshold_get),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 2 command) array for command "pof". */
 SHELL_STATIC_SUBCMD_SET_CREATE(
-	sub_pof, SHELL_CMD(enable, &sub_pof_enable, "Enable power failure feature", NULL),
-	SHELL_CMD(polarity, &sub_pof_polarity, "Power failure warning polarity", NULL),
+	sub_pof, SHELL_CMD(polarity, &sub_pof_polarity, "Power failure warning polarity", NULL),
+	SHELL_CMD(status, &sub_pof_status, "Status power failure feature", NULL),
 	SHELL_CMD(threshold, &sub_pof_threshold, "Vsys comparator threshold select", NULL),
 	SHELL_SUBCMD_SET_END);
 
