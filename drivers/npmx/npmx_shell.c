@@ -380,6 +380,13 @@ static npmx_timer_t *timer_instance_get(const struct shell *shell)
 	return npmx_instance ? npmx_timer_get(npmx_instance, 0) : NULL;
 }
 
+static npmx_vbusin_t *vbusin_instance_get(const struct shell *shell)
+{
+	npmx_instance_t *npmx_instance = npmx_instance_get(shell);
+
+	return npmx_instance ? npmx_vbusin_get(npmx_instance, 0) : NULL;
+}
+
 static bool check_pin_configuration_correctness(const struct shell *shell, int8_t gpio_idx)
 {
 	int8_t pmic_int_pin = (int8_t)npmx_driver_int_pin_get(pmic_dev);
@@ -3449,59 +3456,35 @@ static int cmd_timer_config_prescaler_get(const struct shell *shell, size_t argc
 	return timer_config_get(shell, TIMER_CONFIG_PARAM_PRESCALER);
 }
 
-static int cmd_vbusin_status_connected_get(const struct shell *shell, size_t argc, char **argv)
+static int cmd_vbusin_current_limit_set(const struct shell *shell, size_t argc, char **argv)
 {
-	ARG_UNUSED(argc);
-	ARG_UNUSED(argv);
-
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
+	args_info_t args_info = { .expected_args = 1,
+				  .arg = {
+					  [0] = { SHELL_ARG_TYPE_UINT32_VALUE, "current limit" },
+				  } };
+	if (!arguments_check(shell, argc, argv, &args_info)) {
 		return 0;
 	}
 
-	uint8_t status_mask;
-	npmx_vbusin_t *vbusin_instance = npmx_vbusin_get(npmx_instance, 0);
-	npmx_error_t err_code = npmx_vbusin_vbus_status_get(vbusin_instance, &status_mask);
-
-	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Value: %d.",
-			    !!(status_mask & NPMX_VBUSIN_STATUS_CONNECTED_MASK));
-	} else {
-		shell_error(shell, "Error: unable to read VBUS connected status.");
-	}
-
-	return 0;
-}
-
-static int cmd_vbusin_status_cc_get(const struct shell *shell, size_t argc, char **argv)
-{
-	ARG_UNUSED(argc);
-	ARG_UNUSED(argv);
-
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
+	npmx_vbusin_t *vbusin_instance = vbusin_instance_get(shell);
+	if (vbusin_instance == NULL) {
 		return 0;
 	}
 
-	npmx_vbusin_cc_t cc1;
-	npmx_vbusin_cc_t cc2;
-	npmx_vbusin_t *vbusin_instance = npmx_vbusin_get(npmx_instance, 0);
-	npmx_error_t err_code = npmx_vbusin_cc_status_get(vbusin_instance, &cc1, &cc2);
-
-	if (check_error_code(shell, err_code)) {
-		if (cc1 == NPMX_VBUSIN_CC_NOT_CONNECTED) {
-			shell_print(shell, "Value: %d.", cc2);
-		} else {
-			shell_print(shell, "Value: %d.", cc1);
-		}
-	} else {
-		shell_error(shell, "Error: unable to read VBUS CC line status.");
+	uint32_t current_limit_ma = args_info.arg[0].result.uvalue;
+	npmx_vbusin_current_t vbusin_current = npmx_vbusin_current_convert(current_limit_ma);
+	if (vbusin_current == NPMX_VBUSIN_CURRENT_INVALID) {
+		print_convert_error(shell, "milliamperes", "current limit");
+		return 0;
 	}
 
+	npmx_error_t err_code = npmx_vbusin_current_limit_set(vbusin_instance, vbusin_current);
+	if (!check_error_code(shell, err_code)) {
+		print_set_error(shell, "current limit");
+		return 0;
+	}
+
+	print_success(shell, current_limit_ma, UNIT_TYPE_MILLIAMPERE);
 	return 0;
 }
 
@@ -3510,71 +3493,72 @@ static int cmd_vbusin_current_limit_get(const struct shell *shell, size_t argc, 
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
+	npmx_vbusin_t *vbusin_instance = vbusin_instance_get(shell);
+	if (vbusin_instance == NULL) {
 		return 0;
 	}
 
-	npmx_vbusin_current_t current_limit;
-	npmx_vbusin_t *vbusin_instance = npmx_vbusin_get(npmx_instance, 0);
-	npmx_error_t err_code = npmx_vbusin_current_limit_get(vbusin_instance, &current_limit);
-
+	npmx_vbusin_current_t vbusin_current;
+	npmx_error_t err_code = npmx_vbusin_current_limit_get(vbusin_instance, &vbusin_current);
 	if (!check_error_code(shell, err_code)) {
-		shell_error(shell, "Error: unable to read VBUS current limit.");
+		print_get_error(shell, "current limit");
 		return 0;
 	}
 
-	uint32_t current;
-
-	if (npmx_vbusin_current_convert_to_ma(current_limit, &current)) {
-		shell_print(shell, "Value: %u mA.", current);
-	} else {
-		shell_error(shell, "Error: unable to convert VBUS current limit value.");
+	uint32_t current_limit_ma;
+	if (!npmx_vbusin_current_convert_to_ma(vbusin_current, &current_limit_ma)) {
+		print_convert_error(shell, "current limit", "milliamperes");
+		return 0;
 	}
 
+	print_value(shell, current_limit_ma, UNIT_TYPE_MILLIAMPERE);
 	return 0;
 }
 
-static int cmd_vbusin_current_limit_set(const struct shell *shell, size_t argc, char **argv)
+static int cmd_vbusin_status_cc_get(const struct shell *shell, size_t argc, char **argv)
 {
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
 
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
+	npmx_vbusin_t *vbusin_instance = vbusin_instance_get(shell);
+	if (vbusin_instance == NULL) {
 		return 0;
 	}
 
-	if (argc < 2) {
-		shell_error(shell, "Error: missing current limit value.");
+	npmx_vbusin_cc_t cc1;
+	npmx_vbusin_cc_t cc2;
+	npmx_error_t err_code = npmx_vbusin_cc_status_get(vbusin_instance, &cc1, &cc2);
+	if (!check_error_code(shell, err_code)) {
+		print_get_error(shell, "VBUS CC line status");
 		return 0;
 	}
 
-	int err = 0;
-	uint32_t current = shell_strtoul(argv[1], 0, &err);
-	npmx_vbusin_t *vbusin_instance = npmx_vbusin_get(npmx_instance, 0);
-
-	if (err != 0) {
-		shell_error(shell, "Error: current limit must be an integer.");
-		return 0;
-	}
-
-	npmx_vbusin_current_t current_limit = npmx_vbusin_current_convert(current);
-
-	if (current_limit == NPMX_VBUSIN_CURRENT_INVALID) {
-		shell_error(shell, "Error: wrong current limit value.");
-		return 0;
-	}
-
-	npmx_error_t err_code = npmx_vbusin_current_limit_set(vbusin_instance, current_limit);
-
-	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Success: %u mA.", current);
+	if (cc1 == NPMX_VBUSIN_CC_NOT_CONNECTED) {
+		print_value(shell, (int)cc2, UNIT_TYPE_NONE);
 	} else {
-		shell_error(shell, "Error: unable to set current limit.");
+		print_value(shell, (int)cc1, UNIT_TYPE_NONE);
+	}
+	return 0;
+}
+
+static int cmd_vbusin_status_connected_get(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	npmx_vbusin_t *vbusin_instance = vbusin_instance_get(shell);
+	if (vbusin_instance == NULL) {
+		return 0;
 	}
 
+	uint8_t status_mask;
+	npmx_error_t err_code = npmx_vbusin_vbus_status_get(vbusin_instance, &status_mask);
+	if (!check_error_code(shell, err_code)) {
+		print_get_error(shell, "VBUS connected status");
+		return 0;
+	}
+
+	print_value(shell, !!(status_mask & NPMX_VBUSIN_STATUS_CONNECTED_MASK), UNIT_TYPE_NONE);
 	return 0;
 }
 
@@ -4237,10 +4221,12 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_timer,
 			       SHELL_CMD(config, &sub_timer_config, "Timer config", NULL),
 			       SHELL_SUBCMD_SET_END);
 
-/* Creating subcommands (level 4 command) array for command "vbusin status connected". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin_status_connected,
-			       SHELL_CMD(get, NULL, "Get VBUS connected status",
-					 cmd_vbusin_status_connected_get),
+/* Creating subcommands (level 3 command) array for command "vbusin current_limit". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin_current_limit,
+			       SHELL_CMD(set, NULL, "Set VBUS current limit",
+					 cmd_vbusin_current_limit_set),
+			       SHELL_CMD(get, NULL, "Get VBUS current limit",
+					 cmd_vbusin_current_limit_get),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 4 command) array for command "vbusin status cc". */
@@ -4248,26 +4234,23 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin_status_cc,
 			       SHELL_CMD(get, NULL, "Get VBUS CC status", cmd_vbusin_status_cc_get),
 			       SHELL_SUBCMD_SET_END);
 
-/* Creating subcommands (level 3 command) array for command "vbusin status". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin_status,
-			       SHELL_CMD(connected, &sub_vbusin_status_connected, "VBUS connected",
-					 NULL),
-			       SHELL_CMD(cc, &sub_vbusin_status_cc, "VBUS CC", NULL),
+/* Creating subcommands (level 4 command) array for command "vbusin status connected". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin_status_connected,
+			       SHELL_CMD(get, NULL, "Get VBUS connected status",
+					 cmd_vbusin_status_connected_get),
 			       SHELL_SUBCMD_SET_END);
 
-/* Creating subcommands (level 3 command) array for command "vbusin current_limit". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin_current_limit,
-			       SHELL_CMD(get, NULL, "VBUS current limit get",
-					 cmd_vbusin_current_limit_get),
-			       SHELL_CMD(set, NULL, "VBUS current limit set",
-					 cmd_vbusin_current_limit_set),
+/* Creating subcommands (level 3 command) array for command "vbusin status". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin_status,
+			       SHELL_CMD(cc, &sub_vbusin_status_cc, "VBUS CC", NULL),
+			       SHELL_CMD(connected, &sub_vbusin_status_connected, "VBUS connected",
+					 NULL),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 2 command) array for command "vbusin". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin, SHELL_CMD(status, &sub_vbusin_status, "Status", NULL),
-			       SHELL_CMD(current_limit, &sub_vbusin_current_limit, "Current limit",
-					 NULL),
-			       SHELL_SUBCMD_SET_END);
+SHELL_STATIC_SUBCMD_SET_CREATE(
+	sub_vbusin, SHELL_CMD(current_limit, &sub_vbusin_current_limit, "Current limit", NULL),
+	SHELL_CMD(status, &sub_vbusin_status, "Status", NULL), SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 1 command) array for command "npmx". */
 SHELL_STATIC_SUBCMD_SET_CREATE(
