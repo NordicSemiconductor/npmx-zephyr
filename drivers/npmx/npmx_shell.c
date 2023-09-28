@@ -57,12 +57,12 @@ typedef enum {
 	SHIP_RESET_CONFIG_PARAM_TWO_BUTTONS /* Use two buttons (SHPHLD and GPIO0). */
 } ship_reset_config_param_t;
 
-/** @brief Timer configuration type. */
+/** @brief Timer config parameter. */
 typedef enum {
-	TIMER_CONFIG_TYPE_MODE, /* Configure timer mode. */
-	TIMER_CONFIG_TYPE_PRESCALER, /* Configure timer prescaler mode. */
-	TIMER_CONFIG_TYPE_COMPARE, /* Configure timer compare value. */
-} timer_config_type_t;
+	TIMER_CONFIG_PARAM_COMPARE, /* Configure timer compare value. */
+	TIMER_CONFIG_PARAM_MODE, /* Configure timer mode. */
+	TIMER_CONFIG_PARAM_PRESCALER, /* Configure timer prescaler mode. */
+} timer_config_param_t;
 
 /** @brief Supported shell argument types. */
 typedef enum {
@@ -371,6 +371,13 @@ static npmx_ship_t *ship_instance_get(const struct shell *shell)
 	npmx_instance_t *npmx_instance = npmx_instance_get(shell);
 
 	return npmx_instance ? npmx_ship_get(npmx_instance, 0) : NULL;
+}
+
+static npmx_timer_t *timer_instance_get(const struct shell *shell)
+{
+	npmx_instance_t *npmx_instance = npmx_instance_get(shell);
+
+	return npmx_instance ? npmx_timer_get(npmx_instance, 0) : NULL;
 }
 
 static bool check_pin_configuration_correctness(const struct shell *shell, int8_t gpio_idx)
@@ -3274,7 +3281,8 @@ static int cmd_ship_reset_two_buttons_get(const struct shell *shell, size_t argc
 	return ship_reset_config_get(shell, SHIP_RESET_CONFIG_PARAM_TWO_BUTTONS);
 }
 
-static npmx_timer_mode_t timer_mode_int_convert_to_enum(uint32_t timer_mode)
+static npmx_timer_mode_t timer_mode_int_convert_to_enum(const struct shell *shell,
+							uint32_t timer_mode)
 {
 	switch (timer_mode) {
 	case 0:
@@ -3288,125 +3296,136 @@ static npmx_timer_mode_t timer_mode_int_convert_to_enum(uint32_t timer_mode)
 	case 4:
 		return NPMX_TIMER_MODE_WAKEUP;
 	default:
+		shell_error(shell, "Error: Wrong mode:");
+		print_hint_error(shell, 0, "Boot monitor");
+		print_hint_error(shell, 1, "Watchdog warning");
+		print_hint_error(shell, 2, "Watchdog reset");
+		print_hint_error(shell, 3, "General purpose");
+		print_hint_error(shell, 4, "Wakeup");
 		return NPMX_TIMER_MODE_INVALID;
 	}
 }
 
-static int timer_config_get(const struct shell *shell, timer_config_type_t config_type)
-{
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
-		return 0;
-	}
-
-	npmx_timer_t *timer_instance = npmx_timer_get(npmx_instance, 0);
-
-	npmx_timer_config_t timer_config;
-	npmx_error_t err_code = npmx_timer_config_get(timer_instance, &timer_config);
-
-	if (check_error_code(shell, err_code)) {
-		if (config_type == TIMER_CONFIG_TYPE_MODE) {
-			shell_print(shell, "Value: %d.", timer_config.mode);
-		} else if (config_type == TIMER_CONFIG_TYPE_PRESCALER) {
-			shell_print(shell, "Value: %d.", timer_config.prescaler);
-		} else if (config_type == TIMER_CONFIG_TYPE_COMPARE) {
-			shell_print(shell, "Value: %d.", timer_config.compare_value);
-		}
-	} else {
-		shell_error(shell, "Error: unable to read timer configuration.");
-	}
-
-	return 0;
-}
-
 static int timer_config_set(const struct shell *shell, size_t argc, char **argv,
-			    timer_config_type_t config_type)
+			    timer_config_param_t config_type)
 {
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+	char *config_name;
+	switch (config_type) {
+	case TIMER_CONFIG_PARAM_MODE:
+		config_name = "mode";
+		break;
+	case TIMER_CONFIG_PARAM_PRESCALER:
+		config_name = "prescaler";
+		break;
+	case TIMER_CONFIG_PARAM_COMPARE:
+		config_name = "compare";
+		break;
+	}
 
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
+	args_info_t args_info = { .expected_args = 1,
+				  .arg = {
+					  [0] = { SHELL_ARG_TYPE_UINT32_VALUE, config_name },
+				  } };
+	if (!arguments_check(shell, argc, argv, &args_info)) {
 		return 0;
 	}
 
-	char config_name[10];
-	if (config_type == TIMER_CONFIG_TYPE_MODE) {
-		strcpy(config_name, "mode");
-	} else if (config_type == TIMER_CONFIG_TYPE_PRESCALER) {
-		strcpy(config_name, "prescaler");
-	} else if (config_type == TIMER_CONFIG_TYPE_COMPARE) {
-		strcpy(config_name, "period");
-	} else {
-		shell_error(shell, "Error: invalid config type value.");
+	npmx_timer_t *timer_instance = timer_instance_get(shell);
+	if (timer_instance == NULL) {
 		return 0;
 	}
-
-	if (argc < 2) {
-		shell_error(shell, "Error: missing timer %s value.", config_name);
-		return 0;
-	}
-
-	int err = 0;
-	uint32_t input_value = (uint32_t)shell_strtoul(argv[1], 0, &err);
-	if (err != 0) {
-		shell_error(shell, "Error: timer %s has to be an integer.", config_name);
-		return 0;
-	}
-
-	npmx_timer_t *timer_instance = npmx_timer_get(npmx_instance, 0);
 
 	npmx_timer_config_t timer_config;
 	npmx_error_t err_code = npmx_timer_config_get(timer_instance, &timer_config);
-
 	if (!check_error_code(shell, err_code)) {
-		shell_error(shell, "Error: unable to read timer configuration.");
+		print_get_error(shell, "timer config");
 		return 0;
 	}
 
-	if (config_type == TIMER_CONFIG_TYPE_MODE) {
-		timer_config.mode = timer_mode_int_convert_to_enum(input_value);
-
+	uint32_t config_value = args_info.arg[0].result.uvalue;
+	switch (config_type) {
+	case TIMER_CONFIG_PARAM_MODE:
+		timer_config.mode = timer_mode_int_convert_to_enum(shell, config_value);
 		if (timer_config.mode == NPMX_TIMER_MODE_INVALID) {
-			shell_error(shell,
-				    "Error: timer mode can be: 0-boot monitor, 1-watchdog warning, "
-				    "2-watchdog reset, 3-general purpose or 4-wakeup.");
 			return 0;
 		}
-	} else if (config_type == TIMER_CONFIG_TYPE_PRESCALER) {
-		if (input_value < NPMX_TIMER_PRESCALER_COUNT) {
-			timer_config.prescaler = (input_value ? NPMX_TIMER_PRESCALER_FAST :
-								NPMX_TIMER_PRESCALER_SLOW);
-		} else {
-			shell_error(shell, "Error: timer prescaler value can be 0-slow or 1-fast.");
+		break;
+	case TIMER_CONFIG_PARAM_PRESCALER:
+		if (config_value >= NPMX_TIMER_PRESCALER_COUNT) {
+			shell_error(shell, "Error: Wrong prescaler:");
+			print_hint_error(shell, 0, "Slow");
+			print_hint_error(shell, 1, "Fast");
 			return 0;
 		}
-	} else if (config_type == TIMER_CONFIG_TYPE_COMPARE) {
-		if (input_value <= NPM_TIMER_COUNTER_COMPARE_VALUE_MAX) {
-			timer_config.compare_value = input_value;
-		} else {
-			shell_error(shell, "Error: timer period value can be 0..0x%lX.",
+
+		timer_config.prescaler =
+			(config_value ? NPMX_TIMER_PRESCALER_FAST : NPMX_TIMER_PRESCALER_SLOW);
+		break;
+	case TIMER_CONFIG_PARAM_COMPARE:
+		if (config_value >= NPM_TIMER_COUNTER_COMPARE_VALUE_MAX) {
+			shell_error(shell, "Error: wrong period: value can be 0..0x%lX.",
 				    NPM_TIMER_COUNTER_COMPARE_VALUE_MAX);
 			return 0;
 		}
+
+		timer_config.compare_value = config_value;
+		break;
 	}
 
 	err_code = npmx_timer_config_set(timer_instance, &timer_config);
-
-	if (check_error_code(shell, err_code)) {
-		if (config_type == TIMER_CONFIG_TYPE_MODE) {
-			shell_print(shell, "Success: %d.", timer_config.mode);
-		} else if (config_type == TIMER_CONFIG_TYPE_PRESCALER) {
-			shell_print(shell, "Success: %d.", timer_config.prescaler);
-		} else if (config_type == TIMER_CONFIG_TYPE_COMPARE) {
-			shell_print(shell, "Success: %d.", timer_config.compare_value);
-		}
-	} else {
-		shell_error(shell, "Error: unable to set timer configuration.");
+	if (!check_error_code(shell, err_code)) {
+		print_set_error(shell, "timer config");
+		return 0;
 	}
 
+	print_success(shell, config_value, UNIT_TYPE_NONE);
 	return 0;
+}
+
+static int timer_config_get(const struct shell *shell, timer_config_param_t config_type)
+{
+	npmx_timer_t *timer_instance = timer_instance_get(shell);
+	if (timer_instance == NULL) {
+		return 0;
+	}
+
+	npmx_timer_config_t timer_config;
+	npmx_error_t err_code = npmx_timer_config_get(timer_instance, &timer_config);
+	if (!check_error_code(shell, err_code)) {
+		print_get_error(shell, "timer config");
+		return 0;
+	}
+
+	switch (config_type) {
+	case TIMER_CONFIG_PARAM_MODE:
+		print_value(shell, (int)timer_config.mode, UNIT_TYPE_NONE);
+		break;
+	case TIMER_CONFIG_PARAM_PRESCALER:
+		print_value(shell, (int)timer_config.prescaler, UNIT_TYPE_NONE);
+		break;
+	case TIMER_CONFIG_PARAM_COMPARE:
+		print_value(shell, timer_config.compare_value, UNIT_TYPE_NONE);
+		break;
+	}
+	return 0;
+}
+
+static int cmd_timer_config_compare_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return timer_config_set(shell, argc, argv, TIMER_CONFIG_PARAM_COMPARE);
+}
+
+static int cmd_timer_config_compare_get(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	return timer_config_get(shell, TIMER_CONFIG_PARAM_COMPARE);
+}
+
+static int cmd_timer_config_mode_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return timer_config_set(shell, argc, argv, TIMER_CONFIG_PARAM_MODE);
 }
 
 static int cmd_timer_config_mode_get(const struct shell *shell, size_t argc, char **argv)
@@ -3414,12 +3433,12 @@ static int cmd_timer_config_mode_get(const struct shell *shell, size_t argc, cha
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
-	return timer_config_get(shell, TIMER_CONFIG_TYPE_MODE);
+	return timer_config_get(shell, TIMER_CONFIG_PARAM_MODE);
 }
 
-static int cmd_timer_config_mode_set(const struct shell *shell, size_t argc, char **argv)
+static int cmd_timer_config_prescaler_set(const struct shell *shell, size_t argc, char **argv)
 {
-	return timer_config_set(shell, argc, argv, TIMER_CONFIG_TYPE_MODE);
+	return timer_config_set(shell, argc, argv, TIMER_CONFIG_PARAM_PRESCALER);
 }
 
 static int cmd_timer_config_prescaler_get(const struct shell *shell, size_t argc, char **argv)
@@ -3427,25 +3446,7 @@ static int cmd_timer_config_prescaler_get(const struct shell *shell, size_t argc
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
-	return timer_config_get(shell, TIMER_CONFIG_TYPE_PRESCALER);
-}
-
-static int cmd_timer_config_prescaler_set(const struct shell *shell, size_t argc, char **argv)
-{
-	return timer_config_set(shell, argc, argv, TIMER_CONFIG_TYPE_PRESCALER);
-}
-
-static int cmd_timer_config_period_get(const struct shell *shell, size_t argc, char **argv)
-{
-	ARG_UNUSED(argc);
-	ARG_UNUSED(argv);
-
-	return timer_config_get(shell, TIMER_CONFIG_TYPE_COMPARE);
-}
-
-static int cmd_timer_config_period_set(const struct shell *shell, size_t argc, char **argv)
-{
-	return timer_config_set(shell, argc, argv, TIMER_CONFIG_TYPE_COMPARE);
+	return timer_config_get(shell, TIMER_CONFIG_PARAM_PRESCALER);
 }
 
 static int cmd_vbusin_status_connected_get(const struct shell *shell, size_t argc, char **argv)
@@ -4201,40 +4202,39 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_ship, SHELL_CMD(config, &sub_ship_config, "Sh
 			       SHELL_CMD(reset, &sub_ship_reset, "Reset button config", NULL),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 4 command) array for command "timer config compare". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_timer_config_compare,
+			       SHELL_CMD(set, NULL, "Set timer compare",
+					 cmd_timer_config_compare_set),
+			       SHELL_CMD(get, NULL, "Get timer compare",
+					 cmd_timer_config_compare_get),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating subcommands (level 4 command) array for command "timer config mode". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_timer_config_mode,
-			       SHELL_CMD(get, NULL, "Get timer mode value",
-					 cmd_timer_config_mode_get),
-			       SHELL_CMD(set, NULL, "Set timer mode value",
-					 cmd_timer_config_mode_set),
+			       SHELL_CMD(set, NULL, "Set timer mode", cmd_timer_config_mode_set),
+			       SHELL_CMD(get, NULL, "Get timer mode", cmd_timer_config_mode_get),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 4 command) array for command "timer config prescaler". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_timer_config_prescaler,
-			       SHELL_CMD(get, NULL, "Get timer prescaler value",
-					 cmd_timer_config_prescaler_get),
-			       SHELL_CMD(set, NULL, "Set timer prescaler value",
+			       SHELL_CMD(set, NULL, "Set timer prescaler",
 					 cmd_timer_config_prescaler_set),
-			       SHELL_SUBCMD_SET_END);
-
-/* Creating subcommands (level 4 command) array for command "timer config period". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_timer_config_period,
-			       SHELL_CMD(get, NULL, "Get timer period value",
-					 cmd_timer_config_period_get),
-			       SHELL_CMD(set, NULL, "Set timer period value",
-					 cmd_timer_config_period_set),
+			       SHELL_CMD(get, NULL, "Get timer prescaler",
+					 cmd_timer_config_prescaler_get),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 3 command) array for command "timer config". */
 SHELL_STATIC_SUBCMD_SET_CREATE(
-	sub_timer_config, SHELL_CMD(mode, &sub_timer_config_mode, "Timer mode selection", NULL),
+	sub_timer_config,
+	SHELL_CMD(compare, &sub_timer_config_compare, "Timer compare value", NULL),
+	SHELL_CMD(mode, &sub_timer_config_mode, "Timer mode selection", NULL),
 	SHELL_CMD(prescaler, &sub_timer_config_prescaler, "Timer prescaler selection", NULL),
-	SHELL_CMD(period, &sub_timer_config_period, "Timer period value", NULL),
 	SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 2 command) array for command "timer". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_timer,
-			       SHELL_CMD(config, &sub_timer_config, "Timer configuration", NULL),
+			       SHELL_CMD(config, &sub_timer_config, "Timer config", NULL),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 4 command) array for command "vbusin status connected". */
