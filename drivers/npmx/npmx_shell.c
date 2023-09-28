@@ -773,7 +773,7 @@ static int cmd_ntc_resistance_set(const struct shell *shell, size_t argc, char *
 
 	err_code = func(charger_instance, resistance);
 	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Success: %d Ohms.", resistance);
+		shell_print(shell, "Success: %d Ohm.", resistance);
 	} else {
 		shell_error(shell, "Error: unable to set NTC resistance value.");
 	}
@@ -801,7 +801,7 @@ static int cmd_ntc_resistance_get(const struct shell *shell, size_t argc, char *
 	npmx_error_t err_code = func(charger_instance, &resistance);
 
 	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Value: %d Ohms.", resistance);
+		shell_print(shell, "Value: %d Ohm.", resistance);
 	} else {
 		shell_error(shell, "Error: unable to read NTC resistance value.");
 	}
@@ -2670,7 +2670,14 @@ static int adc_ntc_set(const struct shell *shell, size_t argc, char **argv,
 
 	err_code = npmx_adc_ntc_config_set(adc_instance, &ntc_config);
 	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Success: %u.", config_val);
+		switch (config_type) {
+		case ADC_NTC_CONFIG_PARAM_TYPE:
+			shell_print(shell, "Success: %u Ohm.", config_val);
+			break;
+		case ADC_NTC_CONFIG_PARAM_BETA:
+			shell_print(shell, "Success: %u.", config_val);
+			break;
+		}
 	} else {
 		shell_error(shell, "Error: unable to set ADC NTC value.");
 	}
