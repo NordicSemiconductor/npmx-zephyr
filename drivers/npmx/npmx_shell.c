@@ -1890,6 +1890,72 @@ static int cmd_charger_trickle_voltage_get(const struct shell *shell, size_t arg
 	return 0;
 }
 
+static const char *shell_err_to_field(npmx_callback_type_t type, uint8_t bit)
+{
+	static const char * err_fieldnames[][8] =
+	{
+		[NPMX_CALLBACK_TYPE_RSTCAUSE] =
+		{
+			[0] = "SHIPMODEEXIT",    [1] = "BOOTMONITORTIMEOUT",
+			[2] = "WATCHDOGTIMEOUT", [3] = "LONGPRESSTIMEOUT",
+			[4] = "THERMALSHUTDOWN", [5] = "VSYSLOW",
+			[6] = "SWRESET",
+		},
+		[NPMX_CALLBACK_TYPE_CHARGER_ERROR] =
+		{
+			[0] = "NTCSENSORERR",  [1] = "VBATSENSORERR",
+			[2] = "VBATLOW",       [3] = "VTRICKLE",
+			[4] = "MEASTIMEOUT",   [5] = "CHARGETIMEOUT",
+			[6] = "TRICKLETIMEOUT",
+		},
+		[NPMX_CALLBACK_TYPE_SENSOR_ERROR] =
+		{
+			[0] = "SENSORNTCCOLD",  [1] = "SENSORNTCCOOL",
+			[2] = "SENSORNTCWARM",  [3] = "SENSORNTCHOT",
+			[4] = "SENSORVTERM",    [5] = "SENSORRECHARGE",
+			[6] = "SENSORVTRICKLE", [7] = "SENSORVBATLOW",
+		},
+	};
+
+	return err_fieldnames[type][bit];
+}
+
+static void print_errlog(npmx_instance_t *p_pm, npmx_callback_type_t type, uint8_t mask)
+{
+	const struct shell *shell = (struct shell *)npmx_core_context_get(p_pm);
+
+	shell_print(shell, "%s:", npmx_callback_to_str(type));
+	for (uint8_t i = 0; i < 8; i++) {
+		if ((1U << i) & mask) {
+			shell_print(shell, "\t%s", shell_err_to_field(type, i));
+		}
+	}
+}
+
+static int cmd_errlog_get(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+	if (npmx_instance == NULL) {
+		return 0;
+	}
+
+	npmx_core_context_set(npmx_instance, (void *)shell);
+
+	npmx_core_register_cb(npmx_instance, print_errlog, NPMX_CALLBACK_TYPE_RSTCAUSE);
+	npmx_core_register_cb(npmx_instance, print_errlog, NPMX_CALLBACK_TYPE_CHARGER_ERROR);
+	npmx_core_register_cb(npmx_instance, print_errlog, NPMX_CALLBACK_TYPE_SENSOR_ERROR);
+
+	npmx_errlog_t *errlog_instance = npmx_errlog_get(npmx_instance, 0);
+	npmx_error_t err_code = npmx_errlog_reset_errors_check(errlog_instance);
+	if (!check_error_code(shell, err_code)) {
+		print_get_error(shell, "error log");
+	}
+	return 0;
+}
+
 static int cmd_ldsw_set(const struct shell *shell, size_t argc, char **argv)
 {
 	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
@@ -3428,77 +3494,6 @@ static int cmd_timer_config_period_set(const struct shell *shell, size_t argc, c
 	return timer_config_set(shell, argc, argv, TIMER_CONFIG_TYPE_COMPARE);
 }
 
-static const char *shell_err_to_field(npmx_callback_type_t type, uint8_t bit)
-{
-	static const char * err_fieldnames[][8] =
-	{
-		[NPMX_CALLBACK_TYPE_RSTCAUSE] =
-		{
-			[0] = "SHIPMODEEXIT",    [1] = "BOOTMONITORTIMEOUT",
-			[2] = "WATCHDOGTIMEOUT", [3] = "LONGPRESSTIMEOUT",
-			[4] = "THERMALSHUTDOWN", [5] = "VSYSLOW",
-			[6] = "SWRESET",
-		},
-		[NPMX_CALLBACK_TYPE_CHARGER_ERROR] =
-		{
-			[0] = "NTCSENSORERR",  [1] = "VBATSENSORERR",
-			[2] = "VBATLOW",       [3] = "VTRICKLE",
-			[4] = "MEASTIMEOUT",   [5] = "CHARGETIMEOUT",
-			[6] = "TRICKLETIMEOUT",
-		},
-		[NPMX_CALLBACK_TYPE_SENSOR_ERROR] =
-		{
-			[0] = "SENSORNTCCOLD",  [1] = "SENSORNTCCOOL",
-			[2] = "SENSORNTCWARM",  [3] = "SENSORNTCHOT",
-			[4] = "SENSORVTERM",    [5] = "SENSORRECHARGE",
-			[6] = "SENSORVTRICKLE", [7] = "SENSORVBATLOW",
-		},
-	};
-
-	return err_fieldnames[type][bit];
-}
-
-static void print_errlog(npmx_instance_t *p_pm, npmx_callback_type_t type, uint8_t mask)
-{
-	const struct shell *shell = (struct shell *)npmx_core_context_get(p_pm);
-
-	shell_print(shell, "%s:", npmx_callback_to_str(type));
-	for (uint8_t i = 0; i < 8; i++) {
-		if ((1U << i) & mask) {
-			shell_print(shell, "\t%s", shell_err_to_field(type, i));
-		}
-	}
-}
-
-static int cmd_errlog_check(const struct shell *shell, size_t argc, char **argv)
-{
-	ARG_UNUSED(argc);
-	ARG_UNUSED(argv);
-
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
-		return 0;
-	}
-
-	npmx_core_context_set(npmx_instance, (void *)shell);
-
-	npmx_core_register_cb(npmx_instance, print_errlog, NPMX_CALLBACK_TYPE_RSTCAUSE);
-	npmx_core_register_cb(npmx_instance, print_errlog, NPMX_CALLBACK_TYPE_CHARGER_ERROR);
-	npmx_core_register_cb(npmx_instance, print_errlog, NPMX_CALLBACK_TYPE_SENSOR_ERROR);
-
-	npmx_errlog_t *errlog_instance = npmx_errlog_get(npmx_instance, 0);
-
-	npmx_error_t err_code = npmx_errlog_reset_errors_check(errlog_instance);
-
-	if (!check_error_code(shell, err_code)) {
-		shell_error(shell, "Error: unable to read errors log.");
-	}
-
-	return 0;
-}
-
 static int cmd_vbusin_status_connected_get(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
@@ -4302,6 +4297,10 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD(trickle_voltage, &sub_charger_trickle_voltage, "Charger trickle voltage", NULL),
 	SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 2 command) array for command "errlog". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_errlog, SHELL_CMD(get, NULL, "Get error logs", cmd_errlog_get),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating dictionary subcommands (level 3 command) array for command "sub_ldsw_mode". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_ldsw_mode,
 			       SHELL_CMD(set, NULL,
@@ -4506,11 +4505,6 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_timer,
 			       SHELL_CMD(config, &sub_timer_config, "Timer configuration", NULL),
 			       SHELL_SUBCMD_SET_END);
 
-/* Creating subcommands (level 2 command) array for command "errlog". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_errlog,
-			       SHELL_CMD(check, NULL, "Check reset errors logs", cmd_errlog_check),
-			       SHELL_SUBCMD_SET_END);
-
 /* Creating subcommands (level 4 command) array for command "vbusin status connected". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_vbusin_status_connected,
 			       SHELL_CMD(get, NULL, "Get VBUS connected status",
@@ -4602,11 +4596,12 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_ship, SHELL_CMD(config, &sub_ship_config, "Sh
 /* Creating subcommands (level 1 command) array for command "npmx". */
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	sub_npmx, SHELL_CMD(adc, &sub_adc, "ADC", NULL), SHELL_CMD(buck, &sub_buck, "Buck", NULL),
-	SHELL_CMD(charger, &sub_charger, "Charger", NULL), SHELL_CMD(ldsw, &sub_ldsw, "LDSW", NULL),
-	SHELL_CMD(leds, &sub_leds, "LEDs", NULL), SHELL_CMD(gpio, &sub_gpio, "GPIOs", NULL),
-	SHELL_CMD(pof, &sub_pof, "POF", NULL), SHELL_CMD(timer, &sub_timer, "Timer", NULL),
+	SHELL_CMD(charger, &sub_charger, "Charger", NULL),
 	SHELL_CMD(errlog, &sub_errlog, "Reset errors logs", NULL),
-	SHELL_CMD(vbusin, &sub_vbusin, "VBUSIN", NULL), SHELL_CMD(ship, &sub_ship, "SHIP", NULL),
+	SHELL_CMD(ldsw, &sub_ldsw, "LDSW", NULL), SHELL_CMD(leds, &sub_leds, "LEDs", NULL),
+	SHELL_CMD(gpio, &sub_gpio, "GPIOs", NULL), SHELL_CMD(pof, &sub_pof, "POF", NULL),
+	SHELL_CMD(timer, &sub_timer, "Timer", NULL), SHELL_CMD(vbusin, &sub_vbusin, "VBUSIN", NULL),
+	SHELL_CMD(ship, &sub_ship, "SHIP", NULL),
 	SHELL_CMD(reset, NULL, "Restart device", cmd_reset), SHELL_SUBCMD_SET_END);
 
 /* Creating root (level 0) command "npmx" without a handler. */
