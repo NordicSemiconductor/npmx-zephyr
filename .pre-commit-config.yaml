@@ -18,6 +18,7 @@ repos:
     language: python
   - id: mixed-line-ending
     language: python
+    args: ['--fix=lf']
   - id: trailing-whitespace
     language: python
 - repo: https://github.com/Lucas-C/pre-commit-hooks
@@ -51,7 +52,7 @@ repos:
   - id: build-docs
     language: python
     files: (\.(rst)$)|(^doc)
-    additional_dependencies: [PyYAML==5.4.1, sphinx-ncs-theme==0.6.2]
+    additional_dependencies: [PyYAML==6.0.1, sphinx-ncs-theme==0.6.2]
     args:
       - '--cache-dir'
       - 'doc/build/doctrees'
