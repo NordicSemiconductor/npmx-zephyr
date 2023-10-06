@@ -10,7 +10,7 @@ npmx-zephyr repository provides an example of [npmx library][npmx_repo] integrat
 For the user's convenience, this repository includes also a variety of sample applications demonstrating how to use the [npmx drivers][npmx_drivers].
 
 ## Supported devices
- -    nPM1300 Engineering C
+ -    nPM1300
 
 ## How to use
 
@@ -39,7 +39,7 @@ To run one of the [sample applications][samples_dir], do the following:
     west flash
     ```
 
-For instance, if you want to run the LED sample for nPM1300 Engineering C used with nRF52840DK, you must configure the setup as specified in the [LED sample README][led_readme]. After that, run the following commands:
+For instance, if you want to run the LED sample for nPM1300 used with nRF52840DK, you must configure the setup as specified in the [LED sample README][led_readme]. After that, run the following commands:
 ```bash
 cd npmx-zephyr/samples/led
 west build -b nrf52840dk_nrf52840
