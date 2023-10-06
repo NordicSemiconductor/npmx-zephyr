@@ -14,12 +14,10 @@ include: i2c-device.yaml
 properties:
   host-int-gpios:
     type: phandle-array
-    required: true
     description: |
       Host GPIO pin used as interrupt input.
   pmic-int-pin:
     type: int
-    required: true
     description: |
       nPM GPIO pin number used as interrupt output.
   host-pof-gpios:
