@@ -1,3 +1,9 @@
+#
+# Copyright (c) 2023 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
+
 sample:
   description: VBUSIN sample
   name: VBUSIN
@@ -11,11 +17,11 @@ common:
   timeout: 30
 
 tests:
-  sample.vbusin.eng_c:
-    extra_args: CONFIG_NPMX_DEVICE_NPM1300_ENG_C=y
+  sample.vbusin:
+    extra_args: CONFIG_NPMX_DEVICE_NPM1300=y
     harness: console
     harness_config:
-      fixture: nPM1300_setup_eng_c
+      fixture: nPM1300_setup
       type: multi_line
       ordered: true
       regex:

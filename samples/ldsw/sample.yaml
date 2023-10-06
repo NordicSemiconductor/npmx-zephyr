@@ -1,3 +1,9 @@
+#
+# Copyright (c) 2023 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
+
 sample:
   description: LDSW sample
   name: LDSW
@@ -11,12 +17,12 @@ common:
   timeout: 30
 
 tests:
-  sample.ldsw.sw_enable.eng_c:
+  sample.ldsw.sw_enable:
     extra_args: CONFIG_TESTCASE_SW_ENABLE=y
-                CONFIG_NPMX_DEVICE_NPM1300_ENG_C=y
+                CONFIG_NPMX_DEVICE_NPM1300=y
     harness: console
     harness_config:
-      fixture: nPM1300_setup_eng_c
+      fixture: nPM1300_setup
       type: multi_line
       ordered: true
       regex:
@@ -24,12 +30,12 @@ tests:
         - "Test enable LDSW with software."
         - "Test enable LDSW with software OK."
 
-  sample.ldsw.gpio_enable.eng_c:
+  sample.ldsw.gpio_enable:
     extra_args: CONFIG_TESTCASE_GPIO_ENABLE=y
-                CONFIG_NPMX_DEVICE_NPM1300_ENG_C=y
+                CONFIG_NPMX_DEVICE_NPM1300=y
     harness: console
     harness_config:
-      fixture: nPM1300_setup_eng_c
+      fixture: nPM1300_setup
       type: multi_line
       ordered: true
       regex:

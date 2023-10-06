@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Nordic Semiconductor ASA
+ * Copyright (c) 2022-2023 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -10,7 +10,7 @@
 
 	npm_0: npm1300@6b {
 		status = "okay";
-		compatible = "nordic,npm1300-eng-c";
+		compatible = "nordic,npmx-npm1300";
 		reg = <0x6b>;
 		host-int-gpios = <&gpio1 10 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>;
 		pmic-int-pin = <0>;
