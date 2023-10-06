@@ -1,3 +1,9 @@
+#
+# Copyright (c) 2023 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
+
 sample:
   description: Wake-up Timer sample
   name: Wake-up Timer
@@ -10,22 +16,22 @@ common:
   tags: pmic
 
 tests:
-  sample.timer.wakeup.simple.eng_c:
-    extra_args: CONFIG_NPMX_DEVICE_NPM1300_ENG_C=y
+  sample.timer.wakeup.simple:
+    extra_args: CONFIG_NPMX_DEVICE_NPM1300=y
     timeout: 30
     harness: console
     harness_config:
-      fixture: nPM1300_setup_eng_c
+      fixture: nPM1300_setup
       type: multi_line
       ordered: true
       regex:
         - "PMIC device OK."
 
-  sample.timer.wakeup.advanced.eng_c:
-    extra_args: CONFIG_NPMX_DEVICE_NPM1300_ENG_C=y
+  sample.timer.wakeup.advanced:
+    extra_args: CONFIG_NPMX_DEVICE_NPM1300=y
     harness: console
     harness_config:
-      fixture: nPM1300_setup_and_manual_action_eng_c
+      fixture: nPM1300_setup_and_manual_action
       type: multi_line
       ordered: true
       regex:
