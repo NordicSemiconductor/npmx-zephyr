@@ -19,7 +19,7 @@ Their code is available on the GitHub `npmx-zephyr repository`_.
 Supported devices
 *****************
 
-- nPM1300 Engineering C
+- nPM1300
 
 Supported drivers
 *****************
@@ -29,7 +29,7 @@ The following matrix provides a comparative overview of which drivers are suppor
  ======================= ===== ====== ========= ======= ====== ====== ===== ===== ====== ======= ========
          Driver           ADC   BUCK   CHARGER   EVENT   GPIO   LDSW   LED   POF   SHIP   TIMER   VBUSIN
  ======================= ===== ====== ========= ======= ====== ====== ===== ===== ====== ======= ========
-  nPM1300 Engineering C    ✔     ✔        ✔        ✔      ✔      ✔      ✔     ✔     ✔       ✔       ✔
+  nPM1300                  ✔     ✔        ✔        ✔      ✔      ✔      ✔     ✔     ✔       ✔       ✔
  ======================= ===== ====== ========= ======= ====== ====== ===== ===== ====== ======= ========
 
 For more information about the features of a specific peripheral, refer to the official documentation of the specific nPM device.
@@ -71,7 +71,7 @@ To run one of the :doc:`sample applications <samples>`, do the following:
      west build -b <target>
      west flash
 
-For instance, if you want to run the LED sample for nPM1300 Engineering C used with nRF52840DK, you must configure the setup as specified in the :doc:`LED sample <../samples/led/README>` description.
+For instance, if you want to run the LED sample for nPM1300 used with nRF52840DK, you must configure the setup as specified in the :doc:`LED sample <../samples/led/README>` description.
 After that, run the following commands:
 
 .. code:: bash

@@ -15,7 +15,7 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(NPMX, CONFIG_NPMX_LOG_LEVEL);
 
-#define DT_DRV_COMPAT nordic_npm1300_eng_c
+#define DT_DRV_COMPAT nordic_npmx_npm1300
 
 struct npmx_data {
 	const struct device *dev;

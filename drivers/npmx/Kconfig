@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 Nordic Semiconductor ASA
+# Copyright (c) 2022-2023 Nordic Semiconductor ASA
 #
 # SPDX-License-Identifier: BSD-3-Clause
 #
@@ -17,11 +17,11 @@ config NPMX_INIT_PRIORITY
 
 choice
 	prompt "IC version"
-	default NPMX_DEVICE_NPM1300_ENG_C
+	default NPMX_DEVICE_NPM1300
 
-	config NPMX_DEVICE_NPM1300_ENG_C
+	config NPMX_DEVICE_NPM1300
 		depends on I2C && GPIO
-		bool "nPM1300 Engineering C"
+		bool "nPM1300"
 endchoice
 
 config NPMX_SHELL
