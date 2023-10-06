@@ -246,18 +246,26 @@ static int npmx_driver_init(const struct device *dev)
 		return -EIO;
 	}
 
-	/* Clear all events before enabling interrupts. */
-	for (uint32_t i = 0; i < NPMX_EVENT_GROUP_COUNT; i++) {
-		if (npmx_core_event_interrupt_disable(npmx_instance, (npmx_event_group_t)i,
-						      NPMX_EVENT_GROUP_ALL_EVENTS_MASK) !=
-		    NPMX_SUCCESS) {
-			LOG_ERR("Failed to disable interrupts");
+	if ((config->host_int_gpio.port != NULL) && (config->pmic_int_pin != -1)) {
+		/* Clear all events before enabling interrupts. */
+		for (uint32_t i = 0; i < NPMX_EVENT_GROUP_COUNT; i++) {
+			if (npmx_core_event_interrupt_disable(npmx_instance, (npmx_event_group_t)i,
+							      NPMX_EVENT_GROUP_ALL_EVENTS_MASK) !=
+			    NPMX_SUCCESS) {
+				LOG_ERR("Failed to disable interrupts");
+				return -EIO;
+			}
+		}
+
+		if (int_gpio_interrupt_init(dev) < 0) {
+			LOG_ERR("Failed to initialize interrupt");
 			return -EIO;
 		}
-	}
-
-	if (int_gpio_interrupt_init(dev) < 0) {
-		LOG_ERR("Failed to initialize interrupt");
+	} else if ((config->host_int_gpio.port != NULL) && (config->pmic_int_pin == -1)) {
+		LOG_ERR("PMIC INT pin not configured");
+		return -EIO;
+	} else if ((config->host_int_gpio.port == NULL) && (config->pmic_int_pin != -1)) {
+		LOG_ERR("HOST INT pin not configured");
 		return -EIO;
 	}
 
@@ -342,8 +350,8 @@ int npmx_driver_reset_pin_get(const struct device *p_dev)
 	static struct npmx_data npmx_data_##inst;                                                  \
 	static const struct npmx_config npmx_config_##inst = {                                     \
 		.i2c = I2C_DT_SPEC_INST_GET(inst),                                                 \
-		.host_int_gpio = GPIO_DT_SPEC_INST_GET(inst, host_int_gpios),                      \
-		.pmic_int_pin = DT_INST_PROP(inst, pmic_int_pin),                                  \
+		.host_int_gpio = GPIO_DT_SPEC_INST_GET_OR(inst, host_int_gpios, { 0 }),            \
+		.pmic_int_pin = DT_INST_PROP_OR(inst, pmic_int_pin, -1),                           \
 		.host_pof_gpio = GPIO_DT_SPEC_INST_GET_OR(inst, host_pof_gpios, { 0 }),            \
 		.pmic_pof_pin = DT_INST_PROP_OR(inst, pmic_pof_pin, -1),                           \
 		.pmic_reset_pin = DT_INST_PROP_OR(inst, pmic_reset_pin, -1),                       \
