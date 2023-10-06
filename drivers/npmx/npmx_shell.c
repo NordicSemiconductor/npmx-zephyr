@@ -1622,7 +1622,7 @@ static int cmd_buck_active_discharge_set(const struct shell *shell, size_t argc,
 	}
 
 	if (argc < 3) {
-		shell_error(shell, "Error: missing buck instance index.");
+		shell_error(shell, "Error: missing new status value.");
 		return 0;
 	}
 
@@ -2207,6 +2207,101 @@ static int cmd_ldsw_soft_start_current_get(const struct shell *shell, size_t arg
 static int cmd_ldsw_soft_start_current_set(const struct shell *shell, size_t argc, char **argv)
 {
 	return ldsw_soft_start_config_set(shell, argc, argv, LDSW_SOFT_START_TYPE_CURRENT);
+}
+
+static int cmd_ldsw_active_discharge_enable_get(const struct shell *shell, size_t argc, char **argv)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	if (argc < 2) {
+		shell_error(shell, "Error: missing LDSW instance index.");
+		return 0;
+	}
+
+	int err = 0;
+	uint8_t ldsw_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
+
+	if (err != 0) {
+		shell_error(shell, "Error: LDSW instance must be an integer.");
+		return 0;
+	}
+
+	if (ldsw_indx >= NPM_LDSW_COUNT) {
+		shell_error(shell, "Error: LDSW instance index is too high: no such instance.");
+		return 0;
+	}
+
+	npmx_ldsw_t *ldsw_instance = npmx_ldsw_get(npmx_instance, ldsw_indx);
+
+	npmx_error_t err_code;
+	bool enable;
+
+	err_code = npmx_ldsw_active_discharge_enable_get(ldsw_instance, &enable);
+
+	if (check_error_code(shell, err_code)) {
+		shell_print(shell, "Value: %d.", enable);
+	} else {
+		shell_error(shell, "Error: unable to read active discharge enable status.");
+	}
+
+	return 0;
+}
+
+static int cmd_ldsw_active_discharge_enable_set(const struct shell *shell, size_t argc, char **argv)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+	if (argc < 2) {
+		shell_error(shell, "Error: missing LDSW instance index and enable value.");
+		return 0;
+	}
+	if (argc < 3) {
+		shell_error(shell, "Error: missing enable value.");
+		return 0;
+	}
+
+	int err = 0;
+	uint8_t ldsw_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
+	uint8_t discharge_enable = CLAMP(shell_strtoul(argv[2], 0, &err), 0, UINT8_MAX);
+
+	if (err != 0) {
+		shell_error(shell, "Error: instance index and enable value must be integers.");
+		return 0;
+	}
+
+	if (ldsw_indx >= NPM_LDSW_COUNT) {
+		shell_error(shell, "Error: LDSW instance index is too high: no such instance.");
+		return 0;
+	}
+
+	if (discharge_enable > 1) {
+		shell_error(
+			shell,
+			"Error: invalid active discharge value. Accepted values: 0 = disabled, 1 = enabled.");
+		return 0;
+	}
+
+	npmx_ldsw_t *ldsw_instance = npmx_ldsw_get(npmx_instance, ldsw_indx);
+
+	npmx_error_t err_code =
+		npmx_ldsw_active_discharge_enable_set(ldsw_instance, discharge_enable == 1);
+
+	if (err_code == NPMX_SUCCESS) {
+		shell_print(shell, "Success: %d.", discharge_enable);
+	} else {
+		shell_error(shell, "Error: unable to set ldsw active discharge status.");
+	}
+
+	return 0;
 }
 
 static int cmd_leds_mode_get(const struct shell *shell, size_t argc, char **argv)
@@ -4116,6 +4211,20 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_ldsw_soft_start,
 					 "Soft-start current", NULL),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 4 command) array for command "ldsw active_discharge enable". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ldsw_active_discharge_enable,
+			       SHELL_CMD(get, NULL, "Get active discharge enable status",
+					 cmd_ldsw_active_discharge_enable_get),
+			       SHELL_CMD(set, NULL, "Set active discharge enable status",
+					 cmd_ldsw_active_discharge_enable_set),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating dictionary subcommands (level 3 command) array for command "ldsw active_discharge". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ldsw_active_discharge,
+			       SHELL_CMD(enable, &sub_ldsw_active_discharge_enable,
+					 "Active discharge enable", NULL),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating subcommands (level 2 command) array for command "ldsw". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_ldsw,
 			       SHELL_CMD(set, NULL, "Enable or disable LDSW", cmd_ldsw_set),
@@ -4123,6 +4232,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_ldsw,
 			       SHELL_CMD(mode, &sub_ldsw_mode, "LDSW mode", NULL),
 			       SHELL_CMD(ldo_voltage, &sub_ldsw_ldo_voltage, "LDO voltage", NULL),
 			       SHELL_CMD(soft_start, &sub_ldsw_soft_start, "Soft-start", NULL),
+			       SHELL_CMD(active_discharge, &sub_ldsw_active_discharge,
+					 "Active discharge", NULL),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 3 command) array for command "leds mode". */
