@@ -1,3 +1,9 @@
+#
+# Copyright (c) 2023 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
+
 sample:
   description: Sample for nPM1300 PMIC BUCKs
   name: nPM1300 PMIC BUCKs
@@ -11,12 +17,12 @@ common:
   timeout: 30
 
 tests:
-  sample.buck.set_buck_voltage_eng_c:
+  sample.buck.set_buck_voltage:
     extra_args: CONFIG_TESTCASE_SET_BUCK_VOLTAGE=y
-                CONFIG_NPMX_DEVICE_NPM1300_ENG_C=y
+                CONFIG_NPMX_DEVICE_NPM1300=y
     harness: console
     harness_config:
-      fixture: nPM1300_setup_eng_c
+      fixture: nPM1300_setup
       type: multi_line
       ordered: true
       regex:
@@ -24,12 +30,12 @@ tests:
         - "Test setting buck voltage."
         - "Test setting buck voltage OK."
 
-  sample.buck.output_voltage_eng_c:
+  sample.buck.output_voltage:
     extra_args: CONFIG_TESTCASE_OUTPUT_VOLTAGE=y
-                CONFIG_NPMX_DEVICE_NPM1300_ENG_C=y
+                CONFIG_NPMX_DEVICE_NPM1300=y
     harness: console
     harness_config:
-      fixture: nPM1300_setup_eng_c
+      fixture: nPM1300_setup
       type: multi_line
       ordered: true
       regex:
@@ -38,12 +44,12 @@ tests:
         - "Voltage BUCK1:"
         - "Test output voltage OK."
 
-  sample.buck.retention_voltage_eng_c:
+  sample.buck.retention_voltage:
     extra_args: CONFIG_TESTCASE_RETENTION_VOLTAGE=y
-                CONFIG_NPMX_DEVICE_NPM1300_ENG_C=y
+                CONFIG_NPMX_DEVICE_NPM1300=y
     harness: console
     harness_config:
-      fixture: nPM1300_setup_eng_c
+      fixture: nPM1300_setup
       type: multi_line
       ordered: true
       regex:
@@ -51,12 +57,12 @@ tests:
         - "Test retention voltage."
         - "Test retention voltage OK."
 
-  sample.buck.enable_bucks_using_pin_eng_c:
+  sample.buck.enable_bucks_using_pin:
     extra_args: CONFIG_TESTCASE_ENABLE_BUCKS_USING_PIN=y
-                CONFIG_NPMX_DEVICE_NPM1300_ENG_C=y
+                CONFIG_NPMX_DEVICE_NPM1300=y
     harness: console
     harness_config:
-      fixture: nPM1300_setup_eng_c
+      fixture: nPM1300_setup
       type: multi_line
       ordered: true
       regex:
