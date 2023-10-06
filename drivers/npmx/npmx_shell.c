@@ -635,9 +635,9 @@ static int cmd_die_temp_set(const struct shell *shell, size_t argc, char **argv,
 	}
 
 	int err = 0;
-	int16_t temperature = (int16_t)CLAMP(shell_strtol(argv[1], 0, &err),
-					     NPMX_PERIPH_CHARGER_DIE_TEMPERATURE_MIN_VAL,
-					     NPMX_PERIPH_CHARGER_DIE_TEMPERATURE_MAX_VAL);
+	int16_t temperature =
+		(int16_t)CLAMP(shell_strtol(argv[1], 0, &err), NPM_BCHARGER_DIE_TEMPERATURE_MIN_VAL,
+			       NPM_BCHARGER_DIE_TEMPERATURE_MAX_VAL);
 
 	if (err != 0) {
 		shell_error(shell, "Error: temperature has to be an integer.");
@@ -1114,7 +1114,7 @@ static int cmd_buck_vout_select_get(const struct shell *shell, size_t argc, char
 		shell_error(shell, "Error: buck instance has to be an integer.");
 		return 0;
 	}
-	if (buck_indx >= NPMX_PERIPH_BUCK_COUNT) {
+	if (buck_indx >= NPM_BUCK_COUNT) {
 		shell_error(shell, "Error: buck instance index is too high: no such instance.");
 		return 0;
 	}
@@ -1163,7 +1163,7 @@ static int cmd_buck_vout_select_set(const struct shell *shell, size_t argc, char
 		return 0;
 	}
 
-	if (buck_indx >= NPMX_PERIPH_BUCK_COUNT) {
+	if (buck_indx >= NPM_BUCK_COUNT) {
 		shell_error(shell, "Error: buck instance index is too high: no such instance.");
 		return 0;
 	}
@@ -1209,7 +1209,7 @@ static int buck_voltage_get(const struct shell *shell, size_t argc, char **argv,
 		return 0;
 	}
 
-	if (buck_indx >= NPMX_PERIPH_BUCK_COUNT) {
+	if (buck_indx >= NPM_BUCK_COUNT) {
 		shell_error(shell, "Error: buck instance index is too high: no such instance.");
 		return 0;
 	}
@@ -1286,7 +1286,7 @@ static int buck_voltage_set(const struct shell *shell, size_t argc, char **argv,
 		return 0;
 	}
 
-	if (buck_indx >= NPMX_PERIPH_BUCK_COUNT) {
+	if (buck_indx >= NPM_BUCK_COUNT) {
 		shell_error(shell, "Buck instance index is too high: no such instance.");
 		return 0;
 	}
@@ -1354,7 +1354,7 @@ static int buck_gpio_get(const struct shell *shell, size_t argc, char **argv,
 		return 0;
 	}
 
-	if (buck_indx >= NPMX_PERIPH_BUCK_COUNT) {
+	if (buck_indx >= NPM_BUCK_COUNT) {
 		shell_error(shell, "Error: buck instance index is too high: no such instance.");
 		return 0;
 	}
@@ -1421,7 +1421,7 @@ static int buck_gpio_set(const struct shell *shell, size_t argc, char **argv,
 		return 0;
 	}
 
-	if (buck_indx >= NPMX_PERIPH_BUCK_COUNT) {
+	if (buck_indx >= NPM_BUCK_COUNT) {
 		shell_error(shell, "Error: Buck instance index is too high: no such instance.");
 		return 0;
 	}
@@ -1531,7 +1531,7 @@ static int cmd_buck_mode_set(const struct shell *shell, size_t argc, char **argv
 		return 0;
 	}
 
-	if (buck_indx >= NPMX_PERIPH_BUCK_COUNT) {
+	if (buck_indx >= NPM_BUCK_COUNT) {
 		shell_error(shell, "Error: Buck instance index is too high: no such instance.");
 		return 0;
 	}
@@ -1587,7 +1587,7 @@ static int cmd_buck_active_discharge_get(const struct shell *shell, size_t argc,
 		return 0;
 	}
 
-	if (buck_index >= NPMX_PERIPH_BUCK_COUNT) {
+	if (buck_index >= NPM_BUCK_COUNT) {
 		shell_error(shell, "Error: Buck instance index is too high: no such instance.");
 		return 0;
 	}
@@ -1635,7 +1635,7 @@ static int cmd_buck_active_discharge_set(const struct shell *shell, size_t argc,
 		return 0;
 	}
 
-	if (buck_index >= NPMX_PERIPH_BUCK_COUNT) {
+	if (buck_index >= NPM_BUCK_COUNT) {
 		shell_error(shell, "Error: Buck instance index is too high: no such instance.");
 		return 0;
 	}
@@ -1683,7 +1683,7 @@ static int cmd_buck_status_power_get(const struct shell *shell, size_t argc, cha
 		return 0;
 	}
 
-	if (buck_indx >= NPMX_PERIPH_BUCK_COUNT) {
+	if (buck_indx >= NPM_BUCK_COUNT) {
 		shell_error(shell, "Error: Buck instance index is too high: no such instance.");
 		return 0;
 	}
@@ -1730,7 +1730,7 @@ static int cmd_buck_status_power_set(const struct shell *shell, size_t argc, cha
 		return 0;
 	}
 
-	if (buck_indx >= NPMX_PERIPH_BUCK_COUNT) {
+	if (buck_indx >= NPM_BUCK_COUNT) {
 		shell_error(shell, "Error: buck instance index is too high: no such instance.");
 		return 0;
 	}
@@ -1780,7 +1780,7 @@ static int cmd_ldsw_set(const struct shell *shell, size_t argc, char **argv)
 		return 0;
 	}
 
-	if (ldsw_indx >= NPMX_PERIPH_LDSW_COUNT) {
+	if (ldsw_indx >= NPM_LDSW_COUNT) {
 		shell_error(shell, "Error: LDSW instance index is too high: no such instance.");
 		return 0;
 	}
@@ -1826,7 +1826,7 @@ static int cmd_ldsw_get(const struct shell *shell, size_t argc, char **argv)
 		return 0;
 	}
 
-	if (ldsw_indx >= NPMX_PERIPH_LDSW_COUNT) {
+	if (ldsw_indx >= NPM_LDSW_COUNT) {
 		shell_error(shell, "Error: LDSW instance index is too high: no such instance.");
 		return 0;
 	}
@@ -1877,7 +1877,7 @@ static int cmd_ldsw_mode_set(const struct shell *shell, size_t argc, char **argv
 		return 0;
 	}
 
-	if (ldsw_indx >= NPMX_PERIPH_LDSW_COUNT) {
+	if (ldsw_indx >= NPM_LDSW_COUNT) {
 		shell_error(shell, "Error: LDSW instance index is too high: no such instance.");
 		return 0;
 	}
@@ -1936,7 +1936,7 @@ static int cmd_ldsw_mode_get(const struct shell *shell, size_t argc, char **argv
 		return 0;
 	}
 
-	if (ldsw_indx >= NPMX_PERIPH_LDSW_COUNT) {
+	if (ldsw_indx >= NPM_LDSW_COUNT) {
 		shell_error(shell, "Error: LDSW instance index is too high: no such instance.");
 		return 0;
 	}
@@ -1979,7 +1979,7 @@ static int cmd_ldsw_ldo_voltage_set(const struct shell *shell, size_t argc, char
 		return 0;
 	}
 
-	if (ldsw_indx >= NPMX_PERIPH_LDSW_COUNT) {
+	if (ldsw_indx >= NPM_LDSW_COUNT) {
 		shell_error(shell, "Error: LDSW instance index is too high: no such instance.");
 		return 0;
 	}
@@ -2025,7 +2025,7 @@ static int cmd_ldsw_ldo_voltage_get(const struct shell *shell, size_t argc, char
 		return 0;
 	}
 
-	if (ldsw_indx >= NPMX_PERIPH_LDSW_COUNT) {
+	if (ldsw_indx >= NPM_LDSW_COUNT) {
 		shell_error(shell, "Error: LDSW instance index is too high: no such instance.");
 		return 0;
 	}
@@ -2080,7 +2080,7 @@ static int ldsw_soft_start_config_set(const struct shell *shell, size_t argc, ch
 		return 0;
 	}
 
-	if (ldsw_indx >= NPMX_PERIPH_LDSW_COUNT) {
+	if (ldsw_indx >= NPM_LDSW_COUNT) {
 		shell_error(shell, "Error: LDSW instance index is too high: no such instance.");
 		return 0;
 	}
@@ -2151,7 +2151,7 @@ static int ldsw_soft_start_config_get(const struct shell *shell, size_t argc, ch
 		return 0;
 	}
 
-	if (ldsw_indx >= NPMX_PERIPH_LDSW_COUNT) {
+	if (ldsw_indx >= NPM_LDSW_COUNT) {
 		shell_error(shell, "Error: LDSW instance index is too high: no such instance.");
 		return 0;
 	}
@@ -2231,7 +2231,7 @@ static int cmd_leds_mode_get(const struct shell *shell, size_t argc, char **argv
 		return 0;
 	}
 
-	if (led_idx >= NPMX_PERIPH_LED_COUNT) {
+	if (led_idx >= NPM_LEDDRV_COUNT) {
 		shell_error(shell, "Error: LED instance index is too high: no such instance.");
 		return 0;
 	}
@@ -2278,7 +2278,7 @@ static int cmd_leds_mode_set(const struct shell *shell, size_t argc, char **argv
 		return 0;
 	}
 
-	if (led_idx >= NPMX_PERIPH_LED_COUNT) {
+	if (led_idx >= NPM_LEDDRV_COUNT) {
 		shell_error(shell, "Error: LED instance index is too high: no such instance.");
 		return 0;
 	}
@@ -2345,7 +2345,7 @@ static int cmd_leds_state_set(const struct shell *shell, size_t argc, char **arg
 		return 0;
 	}
 
-	if (led_idx >= NPMX_PERIPH_LED_COUNT) {
+	if (led_idx >= NPM_LEDDRV_COUNT) {
 		shell_error(shell, "Error: LED instance index is too high: no such instance.");
 		return 0;
 	}
@@ -2490,7 +2490,7 @@ static int gpio_config_get(const struct shell *shell, size_t argc, char **argv,
 		return 0;
 	}
 
-	if (gpio_idx >= NPMX_PERIPH_GPIO_COUNT) {
+	if (gpio_idx >= NPM_GPIOS_COUNT) {
 		shell_error(shell, "Error: GPIO number is too high: no such instance.");
 		return 0;
 	}
@@ -2580,7 +2580,7 @@ static int gpio_config_set(const struct shell *shell, size_t argc, char **argv,
 		return 0;
 	}
 
-	if (gpio_idx >= NPMX_PERIPH_GPIO_COUNT) {
+	if (gpio_idx >= NPM_GPIOS_COUNT) {
 		shell_error(shell, "Error: GPIO number is too high: no such GPIO instance.");
 		return 0;
 	}
@@ -3192,11 +3192,11 @@ static int timer_config_set(const struct shell *shell, size_t argc, char **argv,
 			return 0;
 		}
 	} else if (config_type == TIMER_CONFIG_TYPE_COMPARE) {
-		if (input_value <= NPMX_PERIPH_TIMER_COUNTER_COMPARE_VALUE_MAX) {
+		if (input_value <= NPM_TIMER_COUNTER_COMPARE_VALUE_MAX) {
 			timer_config.compare_value = input_value;
 		} else {
 			shell_error(shell, "Error: timer period value can be 0..0x%lX.",
-				    NPMX_PERIPH_TIMER_COUNTER_COMPARE_VALUE_MAX);
+				    NPM_TIMER_COUNTER_COMPARE_VALUE_MAX);
 			return 0;
 		}
 	}
