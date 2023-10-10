@@ -2367,6 +2367,47 @@ static int cmd_leds_state_set(const struct shell *shell, size_t argc, char **arg
 	return 0;
 }
 
+static int cmd_gpio_status_get(const struct shell *shell, size_t argc, char **argv)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	if (argc < 2) {
+		shell_error(shell, "Error: missing GPIO number.");
+		return 0;
+	}
+
+	int err = 0;
+	uint8_t gpio_idx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
+
+	if (err != 0) {
+		shell_error(shell, "Error: GPIO number has to be an integer.");
+		return 0;
+	}
+
+	if (gpio_idx >= NPM_GPIOS_COUNT) {
+		shell_error(shell, "Error: GPIO number is too high: no such instance.");
+		return 0;
+	}
+
+	npmx_gpio_t *gpio_instance = npmx_gpio_get(npmx_instance, gpio_idx);
+
+	bool gpio_status;
+	npmx_error_t err_code = npmx_gpio_status_check(gpio_instance, &gpio_status);
+
+	if (!check_error_code(shell, err_code)) {
+		shell_error(shell, "Error: unable to read GPIO status.");
+	} else {
+		shell_print(shell, "Value: %u.", (uint8_t)gpio_status);
+	}
+
+	return 0;
+}
+
 static npmx_gpio_mode_t gpio_mode_convert(uint8_t mode)
 {
 	switch (mode) {
@@ -4141,6 +4182,11 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_leds, SHELL_CMD(mode, &sub_leds_mode, "LEDs m
 			       SHELL_CMD(state, &sub_leds_state, "LEDs state", NULL),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 3 command) array for command "gpio status". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_gpio_status,
+			       SHELL_CMD(get, NULL, "Get GPIO status", cmd_gpio_status_get),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating subcommands (level 3 command) array for command "gpio mode". */
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	sub_gpio_mode, SHELL_CMD(get, NULL, "Get GPIO mode configuration", cmd_gpio_mode_get),
@@ -4182,7 +4228,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_gpio_debounce,
 
 /* Creating subcommands (level 2 command) array for command "gpio". */
 SHELL_STATIC_SUBCMD_SET_CREATE(
-	sub_gpio, SHELL_CMD(mode, &sub_gpio_mode, "GPIO mode configuration", NULL),
+	sub_gpio, SHELL_CMD(status, &sub_gpio_status, "GPIO status", NULL),
+	SHELL_CMD(mode, &sub_gpio_mode, "GPIO mode configuration", NULL),
 	SHELL_CMD(type, &sub_gpio_type, "GPIO type", NULL),
 	SHELL_CMD(pull, &sub_gpio_pull, "Pull type configuration", NULL),
 	SHELL_CMD(drive, &sub_gpio_drive, "Drive current configuration", NULL),
