@@ -1,4 +1,4 @@
-@Library("CI_LIB") _
+@Library("CI_LIB@npmx-zephyr-select-test") _
 
 def pipeline = new ncs.npmx_zephyr.Main()
 
