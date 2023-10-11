@@ -14,6 +14,7 @@ Added
 - Added the fuel gauge sample.
 - Added support for nrfxlib.
 - Added shell commands:
+
     - `npmx buck status power get`
     - `npmx buck mode`
     - `npmx charger module ntc set`
@@ -25,6 +26,7 @@ Changed
 
 - Updated the npmx version to 0.7.0.
 - Aligned samples and shell to the following changes:
+
     - A new format for convert functions
     - `npmx_adc_meas_get()` API
     - A new backend handling method
@@ -47,6 +49,7 @@ Added
 - Added basic repository structure.
 - Added README.md file.
 - Added samples:
+
     - BUCK
     - CHARGER and Events
     - LDO
