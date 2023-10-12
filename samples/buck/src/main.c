@@ -18,7 +18,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define BUCK2_IDX 1
 
 #if CONFIG_TESTCASE_SET_BUCK_VOLTAGE || CONFIG_TESTCASE_OUTPUT_VOLTAGE ||                          \
-	CONFIG_TESTCASE_ENABLE_BUCKS_USING_PIN
+     CONFIG_TESTCASE_ENABLE_BUCKS_USING_PIN
 /**
  * @brief Function for setting the buck output voltage for the specified buck converter.
  *
@@ -63,7 +63,9 @@ static void test_set_buck_voltage(npmx_buck_t *p_buck)
 	if (set_buck_voltage(p_buck, NPMX_BUCK_VOLTAGE_2V4) != NPMX_SUCCESS) {
 		LOG_ERR("Unable to set buck voltage.");
 		return;
-	}
+
+
+    }
 
 	LOG_INF("Test setting buck voltage OK.");
 }

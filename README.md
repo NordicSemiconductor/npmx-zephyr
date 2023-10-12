@@ -12,7 +12,11 @@ For the user's convenience, this repository includes also a variety of sample ap
 ## Supported devices
  -    nPM1300 Engineering C
 
+
+
+
 ## How to use
+
 
 ### Repository initialization
 The recommended way to clone the repositories is by using the `west` tool. Information about the installation, available commands, configuration and more can be found in the [Zephyr's west][west_doc] tool documentation.
@@ -27,6 +31,7 @@ cd npmx-zephyr
 west update
 ```
 Alternatively, you can clone repositories by using git only. In this case pay special attention to revisions - both Zephyr and npmx revisions should match the ones specified in the `west.yml`. Moreover, the `npmx` folder should be placed in the `zephyr/modules` subdirectory.
+
 
 ### Building and running sample application
 To run one of the [sample applications][samples_dir], do the following:
@@ -66,6 +71,7 @@ If you want to create a custom application, refer to the following guidelines:
 ├── doc         # Project documentation files
 ├── drivers     # npmx drivers files
 ├── dts	        # Devicetree source files for nPM devices
+
 ├── samples     # npmx samples files
 │   ├── buck    # Samples related to BUCK peripheral
 │   ├── ldo     # Samples related to LDO peripheral
