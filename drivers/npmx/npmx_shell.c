@@ -2095,6 +2095,12 @@ static int ldsw_soft_start_config_set(const struct shell *shell, size_t argc, ch
 
 	switch (config_type) {
 	case LDSW_SOFT_START_TYPE_ENABLE:
+		if (config_val > 1) {
+			shell_error(
+				shell,
+				"Error: invalid soft-start enable value. Accepted values: 0 = disabled, 1 = enabled.");
+			return 0;
+		}
 		soft_start_config.enable = !!config_val;
 		break;
 
