@@ -3477,9 +3477,8 @@ static int cmd_vbusin_current_limit_get(const struct shell *shell, size_t argc, 
 	}
 
 	uint32_t current;
-	err_code = npmx_vbusin_current_convert_to_ma(current_limit, &current);
 
-	if (check_error_code(shell, err_code)) {
+	if (npmx_vbusin_current_convert_to_ma(current_limit, &current)) {
 		shell_print(shell, "Value: %u mA.", current);
 	} else {
 		shell_error(shell, "Error: unable to convert VBUS current limit value.");
@@ -3521,7 +3520,7 @@ static int cmd_vbusin_current_limit_set(const struct shell *shell, size_t argc, 
 	npmx_error_t err_code = npmx_vbusin_current_limit_set(vbusin_instance, current_limit);
 
 	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Success: %s mA.", argv[2]);
+		shell_print(shell, "Success: %u mA.", current);
 	} else {
 		shell_error(shell, "Error: unable to set current limit.");
 	}
