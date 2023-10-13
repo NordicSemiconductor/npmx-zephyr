@@ -3310,6 +3310,17 @@ static int timer_config_set(const struct shell *shell, size_t argc, char **argv,
 		shell_error(shell, "Error: unable to set timer configuration.");
 	}
 
+	if (config_type == TIMER_CONFIG_TYPE_COMPARE) {
+		/* Period timer needs strobe to update */
+		err_code = npmx_timer_task_trigger(timer_instance, NPMX_TIMER_TASK_STROBE);
+
+		if (check_error_code(shell, err_code)) {
+			shell_print(shell, "Success: timer updated.");
+		} else {
+			shell_error(shell, "Error: unable to update timer configuration.");
+		}
+	}
+
 	return 0;
 }
 
