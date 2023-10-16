@@ -93,6 +93,24 @@ static bool check_error_code(const struct shell *shell, npmx_error_t err_code)
 	return false;
 }
 
+static bool check_pin_configuration_correctness(const struct shell *shell, int8_t gpio_idx)
+{
+	int8_t pmic_int_pin = (int8_t)npmx_driver_int_pin_get(pmic_dev);
+	int8_t pmic_pof_pin = (int8_t)npmx_driver_pof_pin_get(pmic_dev);
+
+	if ((pmic_int_pin != -1) && (pmic_int_pin == gpio_idx)) {
+		shell_error(shell, "Error: GPIO used as interrupt.");
+		return false;
+	}
+
+	if ((pmic_pof_pin != -1) && (pmic_pof_pin == gpio_idx)) {
+		shell_error(shell, "Error: GPIO used as POF.");
+		return false;
+	}
+
+	return true;
+}
+
 static int cmd_charger_termination_voltage_get(
 	const struct shell *shell, size_t argc, char **argv,
 	npmx_error_t (*func)(npmx_charger_t const *p_instance, npmx_charger_voltage_t *voltage))
@@ -1408,7 +1426,7 @@ static int buck_gpio_set(const struct shell *shell, size_t argc, char **argv,
 
 	int err = 0;
 	uint8_t buck_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
-	int gpio_indx = shell_strtol(argv[2], 0, &err);
+	int8_t gpio_indx = CLAMP(shell_strtol(argv[2], 0, &err), INT8_MIN, INT8_MAX);
 
 	npmx_buck_gpio_config_t gpio_config = {
 		.inverted = !!shell_strtoul(argv[3], 0, &err),
@@ -1433,21 +1451,8 @@ static int buck_gpio_set(const struct shell *shell, size_t argc, char **argv,
 		NPMX_BUCK_GPIO_3, NPMX_BUCK_GPIO_4,
 	};
 
-	int pmic_int_pin = npmx_driver_int_pin_get(pmic_dev);
-	int pmic_pof_pin = npmx_driver_pof_pin_get(pmic_dev);
-
-	if (pmic_int_pin != -1) {
-		if (pmic_int_pin == gpio_indx) {
-			shell_error(shell, "Error: GPIO used as interrupt.");
-			return 0;
-		}
-	}
-
-	if (pmic_pof_pin != -1) {
-		if (pmic_pof_pin == gpio_indx) {
-			shell_error(shell, "Error: GPIO used as POF.");
-			return 0;
-		}
+	if (!check_pin_configuration_correctness(shell, gpio_indx)) {
+		return 0;
 	}
 
 	if (gpio_indx == -1) {
@@ -2310,6 +2315,137 @@ static int cmd_ldsw_active_discharge_enable_set(const struct shell *shell, size_
 	return 0;
 }
 
+static npmx_ldsw_gpio_t ldsw_gpio_index_convert(int8_t gpio_idx)
+{
+	switch (gpio_idx) {
+	case (-1):
+		return NPMX_LDSW_GPIO_NC;
+	case (0):
+		return NPMX_LDSW_GPIO_0;
+	case (1):
+		return NPMX_LDSW_GPIO_1;
+	case (2):
+		return NPMX_LDSW_GPIO_2;
+	case (3):
+		return NPMX_LDSW_GPIO_3;
+	case (4):
+		return NPMX_LDSW_GPIO_4;
+	default:
+		return NPMX_LDSW_GPIO_INVALID;
+	}
+}
+
+static int cmd_ldsw_enable_gpio_set(const struct shell *shell, size_t argc, char **argv)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+	if (argc < 2) {
+		shell_error(shell,
+			    "Error: missing LDSW instance index, GPIO number and invert state.");
+		return 0;
+	}
+	if (argc < 3) {
+		shell_error(shell, "Error: missing GPIO number and GPIO invert state.");
+		return 0;
+	}
+	if (argc < 4) {
+		shell_error(shell, "Error: missing GPIO invert state.");
+		return 0;
+	}
+
+	int err = 0;
+	uint8_t ldsw_idx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
+	int8_t gpio_idx = CLAMP(shell_strtol(argv[2], 0, &err), INT8_MIN, INT8_MAX);
+
+	npmx_ldsw_gpio_config_t gpio_config = {
+		.gpio = ldsw_gpio_index_convert(gpio_idx),
+		.inverted = !!shell_strtoul(argv[3], 0, &err),
+	};
+
+	if (err != 0) {
+		shell_error(
+			shell,
+			"Error: instance index, GPIO number and GPIO invert state have to be integers.");
+		return 0;
+	}
+
+	if (ldsw_idx >= NPM_LDSW_COUNT) {
+		shell_error(shell, "Error: LDSW instance index is too high: no such instance.");
+		return 0;
+	}
+
+	if (!check_pin_configuration_correctness(shell, gpio_idx)) {
+		return 0;
+	}
+
+	if (gpio_config.gpio == NPMX_LDSW_GPIO_INVALID) {
+		shell_error(shell, "Error: wrong GPIO index.");
+		return 0;
+	}
+
+	npmx_ldsw_t *ldsw_instance = npmx_ldsw_get(npmx_instance, ldsw_idx);
+	npmx_error_t err_code = npmx_ldsw_enable_gpio_set(ldsw_instance, &gpio_config);
+
+	if (check_error_code(shell, err_code)) {
+		shell_print(shell, "Success: %d %u.", gpio_idx, (uint8_t)gpio_config.inverted);
+	} else {
+		shell_error(shell, "Error: unable to set GPIO config.");
+		return 0;
+	}
+
+	return 0;
+}
+
+static int cmd_ldsw_enable_gpio_get(const struct shell *shell, size_t argc, char **argv)
+{
+	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
+
+	if (npmx_instance == NULL) {
+		shell_error(shell, "Error: shell is not initialized.");
+		return 0;
+	}
+
+	if (argc < 2) {
+		shell_error(shell, "Error: missing LDSW instance index.");
+		return 0;
+	}
+
+	int err = 0;
+	uint8_t ldsw_idx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
+
+	if (err != 0) {
+		shell_error(shell, "Error: LDSW instance must be an integer.");
+		return 0;
+	}
+
+	if (ldsw_idx >= NPM_LDSW_COUNT) {
+		shell_error(shell, "Error: LDSW instance index is too high: no such instance.");
+		return 0;
+	}
+
+	npmx_ldsw_t *ldsw_instance = npmx_ldsw_get(npmx_instance, ldsw_idx);
+
+	npmx_error_t err_code;
+	npmx_ldsw_gpio_config_t gpio_config;
+
+	err_code = npmx_ldsw_enable_gpio_get(ldsw_instance, &gpio_config);
+
+	if (!check_error_code(shell, err_code)) {
+		shell_error(shell, "Error: unable to read GPIO config.");
+		return 0;
+	}
+
+	int8_t val = (gpio_config.gpio == NPMX_LDSW_GPIO_NC) ? -1 : ((int8_t)gpio_config.gpio - 1);
+
+	shell_print(shell, "Value: %d %u.", val, (uint8_t)gpio_config.inverted);
+
+	return 0;
+}
+
 static int cmd_leds_mode_get(const struct shell *shell, size_t argc, char **argv)
 {
 	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
@@ -2674,7 +2810,7 @@ static int gpio_config_set(const struct shell *shell, size_t argc, char **argv,
 	}
 
 	int err = 0;
-	uint8_t gpio_idx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
+	int8_t gpio_idx = CLAMP(shell_strtol(argv[1], 0, &err), INT8_MIN, INT8_MAX);
 
 	if (err != 0) {
 		shell_error(shell, "Error: GPIO number has to be an integer.");
@@ -2686,16 +2822,7 @@ static int gpio_config_set(const struct shell *shell, size_t argc, char **argv,
 		return 0;
 	}
 
-	int pmic_int_pin = npmx_driver_int_pin_get(pmic_dev);
-	int pmic_pof_pin = npmx_driver_pof_pin_get(pmic_dev);
-
-	if ((pmic_int_pin != -1) && (pmic_int_pin == gpio_idx)) {
-		shell_error(shell, "Error: GPIO used as interrupt.");
-		return 0;
-	}
-
-	if ((pmic_pof_pin != -1) && (pmic_pof_pin == gpio_idx)) {
-		shell_error(shell, "Error: GPIO used as POF.");
+	if (!check_pin_configuration_correctness(shell, gpio_idx)) {
 		return 0;
 	}
 
@@ -4230,16 +4357,24 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_ldsw_active_discharge,
 					 "Active discharge enable", NULL),
 			       SHELL_SUBCMD_SET_END);
 
-/* Creating subcommands (level 2 command) array for command "ldsw". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_ldsw,
-			       SHELL_CMD(set, NULL, "Enable or disable LDSW", cmd_ldsw_set),
-			       SHELL_CMD(get, NULL, "Check if LDSW is enabled", cmd_ldsw_get),
-			       SHELL_CMD(mode, &sub_ldsw_mode, "LDSW mode", NULL),
-			       SHELL_CMD(ldo_voltage, &sub_ldsw_ldo_voltage, "LDO voltage", NULL),
-			       SHELL_CMD(soft_start, &sub_ldsw_soft_start, "Soft-start", NULL),
-			       SHELL_CMD(active_discharge, &sub_ldsw_active_discharge,
-					 "Active discharge", NULL),
+/* Creating dictionary subcommands (level 3 command) array for command "ldsw enable_gpio". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ldsw_enable_gpio,
+			       SHELL_CMD(set, NULL, "Set GPIO enable status",
+					 cmd_ldsw_enable_gpio_set),
+			       SHELL_CMD(get, NULL, "Get GPIO enable status",
+					 cmd_ldsw_enable_gpio_get),
 			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 2 command) array for command "ldsw". */
+SHELL_STATIC_SUBCMD_SET_CREATE(
+	sub_ldsw, SHELL_CMD(set, NULL, "Enable or disable LDSW", cmd_ldsw_set),
+	SHELL_CMD(get, NULL, "Check if LDSW is enabled", cmd_ldsw_get),
+	SHELL_CMD(mode, &sub_ldsw_mode, "LDSW mode", NULL),
+	SHELL_CMD(ldo_voltage, &sub_ldsw_ldo_voltage, "LDO voltage", NULL),
+	SHELL_CMD(soft_start, &sub_ldsw_soft_start, "Soft-start", NULL),
+	SHELL_CMD(active_discharge, &sub_ldsw_active_discharge, "Active discharge", NULL),
+	SHELL_CMD(enable_gpio, &sub_ldsw_enable_gpio, "Enable GPIOs to control LDSW", NULL),
+	SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 3 command) array for command "leds mode". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_leds_mode,
