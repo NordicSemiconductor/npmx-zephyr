@@ -5,7 +5,7 @@ Release notes
 
 See the release notes for the information about specific npmx-zephyr releases.
 
-[0.7.0] - 12/07/2023
+[0.7.0] - 2023/07/12
 ---------------------
 
 Added
@@ -40,7 +40,7 @@ Fixed
 - Fixed shell commands to prevent accepting invalid inputs.
 - Minor fixes and improvements in documentation.
 
-[0.6.0] - 22/06/2023
+[0.6.0] - 2023/06/22
 ---------------------
 
 Added
