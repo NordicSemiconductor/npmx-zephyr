@@ -1,0 +1,7 @@
+* On the **P18** pin header, connect **VOUT2** and **VDDIO** pins with a jumper.
+* On the **P2** pin header, connect **VBAT** and **VBATIN** pins with a jumper.
+* On the **P17** pin header, connect all LEDs with jumpers.
+* On the **P13** pin header, connect **VSET1** and **GND** pins with a jumper.
+* On the **P14** pin header, connect **VSET2** and **RSET2** pins with a jumper.
+* Connect a suitable battery to the **J2** connector.
+* Connect a USB power supply to the **J3** connector.
