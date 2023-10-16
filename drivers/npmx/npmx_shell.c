@@ -996,6 +996,13 @@ static int ntc_temperature_set(const struct shell *shell, size_t argc, char **ar
 		return 0;
 	}
 
+	if ((temperature < -20) || (temperature > 60)) {
+		shell_error(
+			shell,
+			"Error: The NTC temperature must be in the range between -20*C and 60*C.");
+		return 0;
+	}
+
 	npmx_charger_t *charger_instance = npmx_charger_get(npmx_instance, 0);
 	uint32_t modules_mask;
 	npmx_error_t err_code = npmx_charger_module_get(charger_instance, &modules_mask);
