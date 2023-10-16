@@ -52,7 +52,7 @@ repos:
   - id: build-docs
     language: python
     files: (\.(rst)$)|(^doc)
-    additional_dependencies: [PyYAML==6.0.1, sphinx-ncs-theme==0.6.2]
+    additional_dependencies: [PyYAML==6.0.1, sphinx==4.3.0, sphinx-ncs-theme==0.6.5, sphinx-rtd-theme==0.5.2]
     args:
       - '--cache-dir'
       - 'doc/build/doctrees'
