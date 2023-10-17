@@ -28,9 +28,11 @@ dst_dir = NPMX_ZEPHYR_BASE / "doc" / "samples"
 if os.path.exists(dst_dir):
     shutil.rmtree(dst_dir)
 
-for file in glob.glob(r'**/*.rst', root_dir=src_dir):
-    os.makedirs((dst_dir / file).parents[0])
-    shutil.copy(src_dir / file, dst_dir / file)
+for file in glob.glob(str(src_dir) + r'/**/*.rst'):
+    path_len = len(str(src_dir)) + 1
+    file_short = str(file[path_len:])
+    os.makedirs((dst_dir / file_short).parents[0])
+    shutil.copy(src_dir / file_short, dst_dir / file_short)
 
 # General configuration --------------------------------------------------------
 
