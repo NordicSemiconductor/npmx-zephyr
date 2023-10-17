@@ -1,0 +1,30 @@
+#
+# Copyright (c) 2023 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
+
+sample:
+  description: Buck retention sample
+  name: nPM1300 PMIC BUCK retention sample
+
+common:
+  integration_platforms:
+    - nrf5340dk_nrf5340_cpuapp
+    - nrf52840dk_nrf52840
+  platform_allow: nrf5340dk_nrf5340_cpuapp nrf52840dk_nrf52840
+  tags: pmic
+  timeout: 30
+
+tests:
+  sample.buck_retention:
+    extra_args: CONFIG_NPMX_DEVICE_NPM1300=y
+    harness: console
+    harness_config:
+      fixture: nPM1300_setup
+      type: multi_line
+      ordered: true
+      regex:
+        - "PMIC device OK."
+        - "Test retention voltage."
+        - "Test retention voltage OK."
