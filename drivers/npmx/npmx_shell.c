@@ -2851,7 +2851,7 @@ static int gpio_config_set(const struct shell *shell, size_t argc, char **argv,
 	}
 
 	int err = 0;
-	int8_t gpio_idx = CLAMP(shell_strtol(argv[1], 0, &err), INT8_MIN, INT8_MAX);
+	uint8_t gpio_idx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
 
 	if (err != 0) {
 		shell_error(shell, "Error: GPIO number has to be an integer.");
@@ -2863,7 +2863,7 @@ static int gpio_config_set(const struct shell *shell, size_t argc, char **argv,
 		return 0;
 	}
 
-	if (!check_pin_configuration_correctness(shell, gpio_idx)) {
+	if (!check_pin_configuration_correctness(shell, (int8_t)gpio_idx)) {
 		return 0;
 	}
 
