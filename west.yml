@@ -21,7 +21,7 @@ manifest:
   projects:
     - name: npmx
       path: modules/npmx
-      revision: 3518d9090ba11b79a6c09f658b3534b4f811e832
+      revision: 003f2f221b6ae368b84ccb932c98018b0224b12e
     - name: zephyr
       revision: v3.3.0
       import: true
