@@ -13,15 +13,6 @@
 #include <zephyr/shell/shell.h>
 #include <math.h>
 
-/** @brief The difference in centigrade scale between 0*C to absolute zero temperature. */
-#define ABSOLUTE_ZERO_DIFFERENCE 273.15f
-
-/**
- * @brief All thermistors values are defined in temperature 25*C.
- *        For calculations Kelvin scale is required.
- */
-#define THERMISTOR_NOMINAL_TEMPERATURE (25.0f + ABSOLUTE_ZERO_DIFFERENCE)
-
 /** @brief GPIO configuration type. */
 typedef enum {
 	GPIO_CONFIG_TYPE_MODE, /* GPIO mode. */
@@ -69,19 +60,6 @@ typedef enum {
 	ADC_NTC_CONFIG_PARAM_TYPE, /* Battery NTC type. */
 	ADC_NTC_CONFIG_PARAM_BETA /* Battery NTC beta value. */
 } adc_ntc_config_param_t;
-
-/** @brief Data needed to recalculate NTC temperatures. */
-typedef struct {
-	npmx_charger_t *charger_instance; /* Charger instance. */
-	npmx_adc_ntc_config_t *ntc_config_old; /* Previous NTC configuration. */
-	npmx_adc_ntc_config_t *ntc_config_new; /* New NTC configuration. */
-	npmx_error_t (*get_resistance_func)(
-		npmx_charger_t const *p_instance,
-		uint32_t *resistance); /* Pointer to function getting NTC resistance for temperature treshold. */
-	npmx_error_t (*set_resistance_func)(
-		npmx_charger_t const *p_instance,
-		uint32_t resistance); /* Pointer to function setting NTC resistance for temperature treshold. */
-} temp_recalculate_data_t;
 
 static const struct device *pmic_dev = DEVICE_DT_GET(DT_NODELABEL(npm_0));
 
@@ -890,30 +868,9 @@ static int cmd_ntc_resistance_hot_get(const struct shell *shell, size_t argc, ch
 	return cmd_ntc_resistance_get(shell, argc, argv, npmx_charger_hot_resistance_get);
 }
 
-static bool ntc_resistance_to_temperature(const struct shell *shell,
-					  npmx_adc_ntc_config_t const *ntc_config,
-					  uint32_t resistance, int16_t *temperature)
-{
-	uint32_t ntc_nominal_resistance;
-	if (!npmx_adc_ntc_type_convert_to_ohms(ntc_config->type, &ntc_nominal_resistance)) {
-		shell_error(shell, "Error: unable to convert NTC type to resistance.");
-		return false;
-	}
-
-	float numerator = THERMISTOR_NOMINAL_TEMPERATURE * (float)ntc_config->beta;
-	float denominator = (THERMISTOR_NOMINAL_TEMPERATURE *
-			     log((float)resistance / (float)ntc_nominal_resistance)) +
-			    (float)ntc_config->beta;
-	float temperature_float = round((numerator / denominator) - ABSOLUTE_ZERO_DIFFERENCE);
-
-	*temperature = (int16_t)temperature_float;
-
-	return true;
-}
-
 static int ntc_temperature_get(const struct shell *shell, size_t argc, char **argv,
 			       npmx_error_t (*func)(npmx_charger_t const *p_instance,
-						    uint32_t *resistance))
+						    int16_t *p_temperature))
 {
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
@@ -925,56 +882,22 @@ static int ntc_temperature_get(const struct shell *shell, size_t argc, char **ar
 		return 0;
 	}
 
-	npmx_adc_t *adc_instance = npmx_adc_get(npmx_instance, 0);
-
-	npmx_adc_ntc_config_t ntc_config;
-	npmx_error_t err_code = npmx_adc_ntc_config_get(adc_instance, &ntc_config);
-	if (!check_error_code(shell, err_code)) {
-		shell_error(shell, "Error: unable to read NTC config.");
-		return 0;
-	}
-
 	npmx_charger_t *charger_instance = npmx_charger_get(npmx_instance, 0);
-	uint32_t resistance;
-	err_code = func(charger_instance, &resistance);
-
-	if (!check_error_code(shell, err_code)) {
-		shell_error(shell, "Error: unable to read NTC resistance value.");
-	}
-
 	int16_t temperature;
-	if (ntc_resistance_to_temperature(shell, &ntc_config, resistance, &temperature)) {
+	npmx_error_t err_code = func(charger_instance, &temperature);
+
+	if (check_error_code(shell, err_code)) {
 		shell_print(shell, "Value: %d *C.", temperature);
 	} else {
-		shell_error(shell, "Error: unable to convert resistance to temperature.");
+		shell_error(shell, "Error: unable to get temperature value.");
 	}
 
 	return 0;
 }
 
-static bool ntc_temperature_to_resistance(const struct shell *shell,
-					  npmx_adc_ntc_config_t const *ntc_config,
-					  int16_t temperature, uint32_t *resistance)
-{
-	uint32_t ntc_nominal_resistance;
-	if (!npmx_adc_ntc_type_convert_to_ohms(ntc_config->type, &ntc_nominal_resistance)) {
-		shell_error(shell, "Error: unable to convert NTC type to resistance.");
-		return false;
-	}
-
-	float target_temperature = ((float)temperature + ABSOLUTE_ZERO_DIFFERENCE);
-	float exp_val = ((1.0f / target_temperature) - (1.0f / THERMISTOR_NOMINAL_TEMPERATURE)) *
-			(float)ntc_config->beta;
-	float resistance_float = round((float)ntc_nominal_resistance * exp(exp_val));
-
-	*resistance = (uint32_t)resistance_float;
-
-	return true;
-}
-
 static int ntc_temperature_set(const struct shell *shell, size_t argc, char **argv,
 			       npmx_error_t (*func)(npmx_charger_t const *p_instance,
-						    uint32_t p_resistance))
+						    int16_t temperature))
 {
 	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
 
@@ -1017,21 +940,7 @@ static int ntc_temperature_set(const struct shell *shell, size_t argc, char **ar
 		return 0;
 	}
 
-	npmx_adc_t *adc_instance = npmx_adc_get(npmx_instance, 0);
-
-	npmx_adc_ntc_config_t ntc_config;
-	err_code = npmx_adc_ntc_config_get(adc_instance, &ntc_config);
-	if (!check_error_code(shell, err_code)) {
-		shell_error(shell, "Error: unable to read NTC config.");
-		return 0;
-	}
-
-	uint32_t resistance;
-	if (!ntc_temperature_to_resistance(shell, &ntc_config, temperature, &resistance)) {
-		return 0;
-	}
-
-	err_code = func(charger_instance, resistance);
+	err_code = func(charger_instance, temperature);
 	if (check_error_code(shell, err_code)) {
 		shell_print(shell, "Success: %d *C.", temperature);
 	} else {
@@ -1043,42 +952,42 @@ static int ntc_temperature_set(const struct shell *shell, size_t argc, char **ar
 
 static int cmd_ntc_temperature_cold_set(const struct shell *shell, size_t argc, char **argv)
 {
-	return ntc_temperature_set(shell, argc, argv, npmx_charger_cold_resistance_set);
+	return ntc_temperature_set(shell, argc, argv, npmx_charger_cold_temperature_set);
 }
 
 static int cmd_ntc_temperature_cold_get(const struct shell *shell, size_t argc, char **argv)
 {
-	return ntc_temperature_get(shell, argc, argv, npmx_charger_cold_resistance_get);
+	return ntc_temperature_get(shell, argc, argv, npmx_charger_cold_temperature_get);
 }
 
 static int cmd_ntc_temperature_cool_set(const struct shell *shell, size_t argc, char **argv)
 {
-	return ntc_temperature_set(shell, argc, argv, npmx_charger_cool_resistance_set);
+	return ntc_temperature_set(shell, argc, argv, npmx_charger_cool_temperature_set);
 }
 
 static int cmd_ntc_temperature_cool_get(const struct shell *shell, size_t argc, char **argv)
 {
-	return ntc_temperature_get(shell, argc, argv, npmx_charger_cool_resistance_get);
+	return ntc_temperature_get(shell, argc, argv, npmx_charger_cool_temperature_get);
 }
 
 static int cmd_ntc_temperature_warm_set(const struct shell *shell, size_t argc, char **argv)
 {
-	return ntc_temperature_set(shell, argc, argv, npmx_charger_warm_resistance_set);
+	return ntc_temperature_set(shell, argc, argv, npmx_charger_warm_temperature_set);
 }
 
 static int cmd_ntc_temperature_warm_get(const struct shell *shell, size_t argc, char **argv)
 {
-	return ntc_temperature_get(shell, argc, argv, npmx_charger_warm_resistance_get);
+	return ntc_temperature_get(shell, argc, argv, npmx_charger_warm_temperature_get);
 }
 
 static int cmd_ntc_temperature_hot_set(const struct shell *shell, size_t argc, char **argv)
 {
-	return ntc_temperature_set(shell, argc, argv, npmx_charger_hot_resistance_set);
+	return ntc_temperature_set(shell, argc, argv, npmx_charger_hot_temperature_set);
 }
 
 static int cmd_ntc_temperature_hot_get(const struct shell *shell, size_t argc, char **argv)
 {
-	return ntc_temperature_get(shell, argc, argv, npmx_charger_hot_resistance_get);
+	return ntc_temperature_get(shell, argc, argv, npmx_charger_hot_temperature_get);
 }
 
 static int cmd_charger_discharging_current_get(const struct shell *shell, size_t argc, char **argv)
@@ -3042,35 +2951,6 @@ static int adc_ntc_get(const struct shell *shell, size_t argc, char **argv,
 	return 0;
 }
 
-static bool adc_ntc_temperatures_recalculate(const struct shell *shell,
-					     temp_recalculate_data_t const *data)
-{
-	int16_t temperature;
-	uint32_t resistance;
-
-	npmx_error_t err_code = data->get_resistance_func(data->charger_instance, &resistance);
-	if (!check_error_code(shell, err_code)) {
-		shell_error(shell, "Error: unable to get old resistance value.");
-		return false;
-	}
-	if (!ntc_resistance_to_temperature(shell, data->ntc_config_old, resistance, &temperature)) {
-		shell_error(shell, "Error: unable convert old resistance to temperature.");
-		return false;
-	}
-	if (!ntc_temperature_to_resistance(shell, data->ntc_config_new, temperature, &resistance)) {
-		shell_error(shell, "Error: unable convert temperature to new resistance value.");
-		return false;
-	}
-	err_code = data->set_resistance_func(data->charger_instance, resistance);
-
-	if (!check_error_code(shell, err_code)) {
-		shell_error(shell, "Error: unable to set new resistance value.");
-		return false;
-	}
-
-	return true;
-}
-
 static int adc_ntc_set(const struct shell *shell, size_t argc, char **argv,
 		       adc_ntc_config_param_t config_type)
 {
@@ -3119,8 +2999,32 @@ static int adc_ntc_set(const struct shell *shell, size_t argc, char **argv,
 		return 0;
 	}
 
-	npmx_adc_ntc_config_t ntc_config_old;
-	memcpy(&ntc_config_old, &ntc_config, sizeof(npmx_adc_ntc_config_t));
+	bool recalculate_temps =
+		(config_type == ADC_NTC_CONFIG_PARAM_BETA &&
+		 ntc_config.type != NPMX_ADC_NTC_TYPE_HI_Z && ntc_config.beta != 0);
+	int16_t temp_cool, temp_cold, temp_warm, temp_hot;
+	if (recalculate_temps) {
+		err_code = npmx_charger_cold_temperature_get(charger_instance, &temp_cold);
+		if (!check_error_code(shell, err_code)) {
+			shell_error(shell, "Error: unable to read previous NTC cold treshold.");
+			return 0;
+		}
+		err_code = npmx_charger_cool_temperature_get(charger_instance, &temp_cool);
+		if (!check_error_code(shell, err_code)) {
+			shell_error(shell, "Error: unable to read previous NTC cool treshold.");
+			return 0;
+		}
+		err_code = npmx_charger_warm_temperature_get(charger_instance, &temp_warm);
+		if (!check_error_code(shell, err_code)) {
+			shell_error(shell, "Error: unable to read previous NTC warm treshold.");
+			return 0;
+		}
+		err_code = npmx_charger_hot_temperature_get(charger_instance, &temp_hot);
+		if (!check_error_code(shell, err_code)) {
+			shell_error(shell, "Error: unable to read previous NTC hot treshold.");
+			return 0;
+		}
+	}
 
 	switch (config_type) {
 	case ADC_NTC_CONFIG_PARAM_TYPE:
@@ -3203,46 +3107,25 @@ static int adc_ntc_set(const struct shell *shell, size_t argc, char **argv,
 		return 0;
 	}
 
-	if (config_type == ADC_NTC_CONFIG_PARAM_BETA && ntc_config.type != NPMX_ADC_NTC_TYPE_HI_Z &&
-	    ntc_config_old.type != NPMX_ADC_NTC_TYPE_HI_Z && ntc_config_old.beta != 0) {
-		temp_recalculate_data_t recalculate_data = {
-			.charger_instance = charger_instance,
-			.ntc_config_old = &ntc_config_old,
-			.ntc_config_new = &ntc_config,
-			.get_resistance_func = npmx_charger_cold_resistance_get,
-			.set_resistance_func = npmx_charger_cold_resistance_set
-		};
-		if (!adc_ntc_temperatures_recalculate(shell, &recalculate_data)) {
-			shell_error(
-				shell,
-				"Error: unable to recalculate NTC threshold for cold temperature.");
+	if (recalculate_temps) {
+		err_code = npmx_charger_cold_temperature_set(charger_instance, temp_cold);
+		if (!check_error_code(shell, err_code)) {
+			shell_error(shell, "Error: unable to set new NTC cold treshold.");
 			return 0;
 		}
-
-		recalculate_data.get_resistance_func = npmx_charger_cool_resistance_get;
-		recalculate_data.set_resistance_func = npmx_charger_cool_resistance_set;
-		if (!adc_ntc_temperatures_recalculate(shell, &recalculate_data)) {
-			shell_error(
-				shell,
-				"Error: unable to recalculate NTC threshold for cool temperature.");
+		err_code = npmx_charger_cool_temperature_set(charger_instance, temp_cool);
+		if (!check_error_code(shell, err_code)) {
+			shell_error(shell, "Error: unable to set new NTC cool treshold.");
 			return 0;
 		}
-
-		recalculate_data.get_resistance_func = npmx_charger_warm_resistance_get;
-		recalculate_data.set_resistance_func = npmx_charger_warm_resistance_set;
-		if (!adc_ntc_temperatures_recalculate(shell, &recalculate_data)) {
-			shell_error(
-				shell,
-				"Error: unable to recalculate NTC threshold for warm temperature.");
+		err_code = npmx_charger_warm_temperature_set(charger_instance, temp_warm);
+		if (!check_error_code(shell, err_code)) {
+			shell_error(shell, "Error: unable to set new NTC warm treshold.");
 			return 0;
 		}
-
-		recalculate_data.get_resistance_func = npmx_charger_hot_resistance_get;
-		recalculate_data.set_resistance_func = npmx_charger_hot_resistance_set;
-		if (!adc_ntc_temperatures_recalculate(shell, &recalculate_data)) {
-			shell_error(
-				shell,
-				"Error: unable to recalculate threshold NTC for hot temperature.");
+		err_code = npmx_charger_hot_temperature_set(charger_instance, temp_hot);
+		if (!check_error_code(shell, err_code)) {
+			shell_error(shell, "Error: unable to set new NTC hot treshold.");
 			return 0;
 		}
 		shell_print(shell, "Info: NTC thresholds recalculated successfully.");
