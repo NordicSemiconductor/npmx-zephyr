@@ -387,6 +387,17 @@ static npmx_vbusin_t *vbusin_instance_get(const struct shell *shell)
 	return npmx_instance ? npmx_vbusin_get(npmx_instance, 0) : NULL;
 }
 
+static bool range_check(const struct shell *shell, int32_t value, int32_t min, int32_t max,
+			const char *name)
+{
+	if ((value >= min) && (value <= max)) {
+		return true;
+	}
+
+	shell_error(shell, "Error: %s value out of range.", name);
+	return false;
+}
+
 static bool check_pin_configuration_correctness(const struct shell *shell, int8_t gpio_idx)
 {
 	int8_t pmic_int_pin = (int8_t)npmx_driver_int_pin_get(pmic_dev);
@@ -1152,7 +1163,13 @@ static int cmd_charger_charging_current_set(const struct shell *shell, size_t ar
 		return 0;
 	}
 
-	uint16_t charging_current_ma = CLAMP(args_info.arg[0].result.uvalue, 0, UINT16_MAX);
+	if (!range_check(shell, args_info.arg[0].result.uvalue,
+			 NPM_BCHARGER_CHARGING_CURRENT_MIN_MA, NPM_BCHARGER_CHARGING_CURRENT_MAX_MA,
+			 "charging current")) {
+		return 0;
+	}
+
+	uint16_t charging_current_ma = (uint16_t)args_info.arg[0].result.uvalue;
 	npmx_error_t err_code =
 		npmx_charger_charging_current_set(charger_instance, charging_current_ma);
 	if (!check_error_code(shell, err_code)) {
@@ -1208,13 +1225,13 @@ static int charger_die_temp_set(const struct shell *shell, size_t argc, char **a
 		return 0;
 	}
 
-	int16_t temperature = CLAMP(args_info.arg[0].result.ivalue, 0, INT16_MAX);
-	if (temperature < NPM_BCHARGER_DIE_TEMPERATURE_MIN_VAL ||
-	    temperature > NPM_BCHARGER_DIE_TEMPERATURE_MAX_VAL) {
-		shell_error(shell, "Error: value out of range.");
+	if (!range_check(shell, args_info.arg[0].result.ivalue,
+			 NPM_BCHARGER_DIE_TEMPERATURE_MIN_VAL, NPM_BCHARGER_DIE_TEMPERATURE_MAX_VAL,
+			 "die temperature threshold")) {
 		return 0;
 	}
 
+	int16_t temperature = (int16_t)args_info.arg[0].result.ivalue;
 	npmx_error_t err_code = func(charger_instance, temperature);
 	if (!check_error_code(shell, err_code)) {
 		print_set_error(shell, "die temperature threshold");
@@ -1312,7 +1329,13 @@ static int cmd_charger_discharging_current_set(const struct shell *shell, size_t
 		return 0;
 	}
 
-	uint16_t discharging_current_ma = CLAMP(args_info.arg[0].result.uvalue, 0, UINT16_MAX);
+	if (!range_check(shell, args_info.arg[0].result.uvalue,
+			 NPM_BCHARGER_DISCHARGING_CURRENT_MIN_MA,
+			 NPM_BCHARGER_DISCHARGING_CURRENT_MAX_MA, "discharging current")) {
+		return 0;
+	}
+
+	uint16_t discharging_current_ma = args_info.arg[0].result.uvalue;
 	npmx_error_t err_code =
 		npmx_charger_discharging_current_set(charger_instance, discharging_current_ma);
 	if (!check_error_code(shell, err_code)) {
@@ -1581,10 +1604,7 @@ static int charger_ntc_temperature_set(const struct shell *shell, size_t argc, c
 	}
 
 	int32_t temperature = args_info.arg[0].result.ivalue;
-	if ((temperature < -20) || (temperature > 60)) {
-		shell_error(
-			shell,
-			"Error: The NTC temperature must be in the range between -20*C and 60*C.");
+	if (!range_check(shell, temperature, -20, 60, "NTC temperature")) {
 		return 0;
 	}
 
@@ -3389,9 +3409,8 @@ static int timer_config_set(const struct shell *shell, size_t argc, char **argv,
 			(config_value ? NPMX_TIMER_PRESCALER_FAST : NPMX_TIMER_PRESCALER_SLOW);
 		break;
 	case TIMER_CONFIG_PARAM_COMPARE:
-		if (config_value >= NPM_TIMER_COUNTER_COMPARE_VALUE_MAX) {
-			shell_error(shell, "Error: wrong period: value can be 0..0x%lX.",
-				    NPM_TIMER_COUNTER_COMPARE_VALUE_MAX);
+		if (!range_check(shell, config_value, 0, NPM_TIMER_COUNTER_COMPARE_VALUE_MAX,
+				 "compare")) {
 			return 0;
 		}
 
