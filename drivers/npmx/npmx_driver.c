@@ -234,7 +234,8 @@ static int npmx_driver_init(const struct device *dev)
 
 	data->npmx_instance.generic_cb = generic_callback;
 
-	npmx_error_t ret = npmx_core_init(npmx_instance, backend, generic_callback);
+	npmx_error_t ret = npmx_core_init(npmx_instance, backend, generic_callback,
+					  CONFIG_NPMX_RESTORE_VALUES);
 
 	if (!device_is_ready(bus)) {
 		LOG_ERR("%s: bus device %s is not ready", dev->name, bus->name);
