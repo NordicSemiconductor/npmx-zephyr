@@ -9,6 +9,11 @@ config NPMX
 
 if NPMX
 
+config NPMX_RESTORE_VALUES
+	bool "Restore values"
+	help
+	  Restore values from nPM1300 after the SoC reset.
+
 config NPMX_INIT_PRIORITY
 	int "NPMX init priority"
 	default 90
