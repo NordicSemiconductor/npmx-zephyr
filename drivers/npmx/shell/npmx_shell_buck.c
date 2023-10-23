@@ -4,226 +4,171 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include <npmx_buck.h>
 #include <npmx_shell_common.h>
 #include <npmx_driver.h>
 #include <math.h>
 
-static const struct device *pmic_dev = DEVICE_DT_GET(DT_NODELABEL(npm_0));
+static npmx_buck_t *buck_instance_get(const struct shell *shell, uint32_t index)
+{
+	npmx_instance_t *npmx_instance = npmx_instance_get(shell);
+	bool status = check_instance_index(shell, "buck", index, NPM_BUCK_COUNT);
+
+	return (npmx_instance && status) ? npmx_buck_get(npmx_instance, (uint8_t)index) : NULL;
+}
 
 static int cmd_buck_vout_select_get(const struct shell *shell, size_t argc, char **argv)
 {
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
+	args_info_t args_info = { .expected_args = 1,
+				  .arg = {
+					  [0] = { SHELL_ARG_TYPE_UINT32_INDEX, "buck" },
+				  } };
+	if (!arguments_check(shell, argc, argv, &args_info)) {
 		return 0;
 	}
 
-	if (argc < 2) {
-		shell_error(shell, "Error: Missing buck instance index.");
+	npmx_buck_t *buck_instance = buck_instance_get(shell, args_info.arg[0].result.uvalue);
+	if (buck_instance == NULL) {
 		return 0;
 	}
 
-	int err = 0;
-	uint8_t buck_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
-
-	if (err != 0) {
-		shell_error(shell, "Error: buck instance has to be an integer.");
-		return 0;
-	}
-	if (buck_indx >= NPM_BUCK_COUNT) {
-		shell_error(shell, "Error: buck instance index is too high: no such instance.");
+	npmx_buck_vout_select_t vout_select;
+	npmx_error_t err_code = npmx_buck_vout_select_get(buck_instance, &vout_select);
+	if (!check_error_code(shell, err_code)) {
+		print_get_error(shell, "vout select");
 		return 0;
 	}
 
-	npmx_buck_t *buck_instance = npmx_buck_get(npmx_instance, buck_indx);
-	npmx_buck_vout_select_t selection;
-	npmx_error_t err_code = npmx_buck_vout_select_get(buck_instance, &selection);
-
-	if (err_code == NPMX_SUCCESS) {
-		shell_print(shell, "Value: %d.", selection);
-	} else {
-		shell_error(shell, "Error: unable to read vout select.");
-	}
-
+	print_value(shell, (int)vout_select, UNIT_TYPE_NONE);
 	return 0;
 }
 
 static int cmd_buck_vout_select_set(const struct shell *shell, size_t argc, char **argv)
 {
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
+	args_info_t args_info = { .expected_args = 2,
+				  .arg = {
+					  [0] = { SHELL_ARG_TYPE_UINT32_INDEX, "buck" },
+					  [1] = { SHELL_ARG_TYPE_UINT32_VALUE, "vout select" },
+				  } };
+	if (!arguments_check(shell, argc, argv, &args_info)) {
 		return 0;
 	}
 
-	if (argc < 2) {
-		shell_error(
-			shell,
-			"Error: missing buck instance index and buck output voltage select value.");
+	npmx_buck_t *buck_instance = buck_instance_get(shell, args_info.arg[0].result.uvalue);
+	if (buck_instance == NULL) {
 		return 0;
 	}
 
-	if (argc < 3) {
-		shell_error(shell, "Error: missing output voltage select value.");
+	uint32_t select = args_info.arg[1].result.uvalue;
+	npmx_buck_vout_select_t vout_select;
+	switch (select) {
+	case 0:
+		vout_select = NPMX_BUCK_VOUT_SELECT_VSET_PIN;
+		break;
+	case 1:
+		vout_select = NPMX_BUCK_VOUT_SELECT_SOFTWARE;
+		break;
+	default:
+		shell_error(shell, "Error: Wrong vout select:");
+		print_hint_error(shell, 0, "Vset pin");
+		print_hint_error(shell, 1, "Software");
 		return 0;
 	}
 
-	int err = 0;
-	uint8_t buck_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
-	npmx_buck_vout_select_t selection =
-		(npmx_buck_vout_select_t)CLAMP(shell_strtoul(argv[2], 0, &err), 0, UINT8_MAX);
-
-	if (err != 0) {
-		shell_error(shell, "Error: instance index and voltage must be integers.");
+	npmx_error_t err_code = npmx_buck_vout_select_set(buck_instance, vout_select);
+	if (!check_error_code(shell, err_code)) {
+		print_set_error(shell, "vout select");
 		return 0;
 	}
 
-	if (buck_indx >= NPM_BUCK_COUNT) {
-		shell_error(shell, "Error: buck instance index is too high: no such instance.");
-		return 0;
-	}
-
-	if (selection != NPMX_BUCK_VOUT_SELECT_VSET_PIN &&
-	    selection != NPMX_BUCK_VOUT_SELECT_SOFTWARE) {
-		shell_error(shell, "Error: invalid buck vout select value.");
-		return 0;
-	}
-
-	npmx_buck_t *buck_instance = npmx_buck_get(npmx_instance, buck_indx);
-	npmx_error_t err_code = npmx_buck_vout_select_set(buck_instance, selection);
-
-	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Success: %s.", argv[2]);
-	} else {
-		shell_error(shell, "Error: unable to read vout select.");
-	}
-
+	print_success(shell, select, UNIT_TYPE_NONE);
 	return 0;
 }
 
 static int buck_voltage_get(const struct shell *shell, size_t argc, char **argv,
 			    npmx_error_t (*voltage_get)(npmx_buck_t const *, npmx_buck_voltage_t *))
 {
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
+	args_info_t args_info = { .expected_args = 1,
+				  .arg = {
+					  [0] = { SHELL_ARG_TYPE_UINT32_INDEX, "buck" },
+				  } };
+	if (!arguments_check(shell, argc, argv, &args_info)) {
 		return 0;
 	}
 
-	if (argc < 2) {
-		shell_error(shell, "Error: missing buck instance index.");
+	npmx_buck_t *buck_instance = buck_instance_get(shell, args_info.arg[0].result.uvalue);
+	if (buck_instance == NULL) {
 		return 0;
 	}
-
-	int err = 0;
-	uint8_t buck_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
-
-	if (err != 0) {
-		shell_error(shell, "Error: buck instance has to be an integer.");
-		return 0;
-	}
-
-	if (buck_indx >= NPM_BUCK_COUNT) {
-		shell_error(shell, "Error: buck instance index is too high: no such instance.");
-		return 0;
-	}
-
-	npmx_buck_t *buck_instance = npmx_buck_get(npmx_instance, buck_indx);
 
 	npmx_error_t err_code;
-	npmx_buck_voltage_t voltage;
-
+	npmx_buck_voltage_t buck_voltage;
 	if (voltage_get == npmx_buck_normal_voltage_get) {
-		npmx_buck_vout_select_t selection;
-
-		err_code = npmx_buck_vout_select_get(buck_instance, &selection);
-
+		npmx_buck_vout_select_t vout_select;
+		err_code = npmx_buck_vout_select_get(buck_instance, &vout_select);
 		if (!check_error_code(shell, err_code)) {
-			shell_error(shell, "Error: unable to read VOUT reference selection.");
+			print_get_error(shell, "vout select");
 			return 0;
 		}
 
-		if (selection == NPMX_BUCK_VOUT_SELECT_VSET_PIN) {
-			err_code = npmx_buck_status_voltage_get(buck_instance, &voltage);
-		} else if (selection == NPMX_BUCK_VOUT_SELECT_SOFTWARE) {
-			err_code = voltage_get(buck_instance, &voltage);
+		if (vout_select == NPMX_BUCK_VOUT_SELECT_VSET_PIN) {
+			err_code = npmx_buck_status_voltage_get(buck_instance, &buck_voltage);
+		} else if (vout_select == NPMX_BUCK_VOUT_SELECT_SOFTWARE) {
+			err_code = voltage_get(buck_instance, &buck_voltage);
 		} else {
-			shell_error(shell, "Error: invalid VOUT reference selection.");
+			shell_error(shell, "Error: invalid vout select.");
 			return 0;
 		}
 	} else {
-		err_code = voltage_get(buck_instance, &voltage);
+		err_code = voltage_get(buck_instance, &buck_voltage);
 	}
 
-	if (check_error_code(shell, err_code)) {
-		uint32_t voltage_mv;
-
-		if (npmx_buck_voltage_convert_to_mv(voltage, &voltage_mv)) {
-			shell_print(shell, "Value: %d mV.", voltage_mv);
-		} else {
-			shell_error(shell,
-				    "Error: unable to convert buck voltage value to millivolts.");
-		}
-	} else {
-		shell_error(shell, "Error: unable to read buck voltage.");
+	if (!check_error_code(shell, err_code)) {
+		print_get_error(shell, "buck voltage");
+		return 0;
 	}
 
+	uint32_t voltage_mv;
+	if (!npmx_buck_voltage_convert_to_mv(buck_voltage, &voltage_mv)) {
+		print_convert_error(shell, "buck voltage", "millivolts");
+		return 0;
+	}
+
+	print_value(shell, voltage_mv, UNIT_TYPE_MILLIVOLT);
 	return 0;
 }
 
 static int buck_voltage_set(const struct shell *shell, size_t argc, char **argv,
 			    npmx_error_t (*voltage_set)(npmx_buck_t const *, npmx_buck_voltage_t))
 {
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
+	args_info_t args_info = { .expected_args = 2,
+				  .arg = {
+					  [0] = { SHELL_ARG_TYPE_UINT32_INDEX, "buck" },
+					  [1] = { SHELL_ARG_TYPE_UINT32_VALUE, "voltage" },
+				  } };
+	if (!arguments_check(shell, argc, argv, &args_info)) {
 		return 0;
 	}
 
-	if (argc < 2) {
-		shell_error(shell, "Error: missing buck instance index and buck voltage value.");
+	npmx_buck_t *buck_instance = buck_instance_get(shell, args_info.arg[0].result.uvalue);
+	if (buck_instance == NULL) {
 		return 0;
 	}
 
-	if (argc < 3) {
-		shell_error(shell, "Error: missing voltage value.");
+	uint32_t voltage_mv = args_info.arg[1].result.uvalue;
+	npmx_buck_voltage_t buck_voltage = npmx_buck_voltage_convert(voltage_mv);
+	if (buck_voltage == NPMX_BUCK_VOLTAGE_INVALID) {
+		print_convert_error(shell, "millivolts", "buck voltage");
 		return 0;
 	}
 
-	int err = 0;
-	uint8_t buck_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
-	uint32_t buck_set = (uint32_t)shell_strtoul(argv[2], 0, &err);
-
-	if (err != 0) {
-		shell_error(shell, "Error: instance index and voltage must be integers.");
+	npmx_error_t err_code = voltage_set(buck_instance, buck_voltage);
+	if (!check_error_code(shell, err_code)) {
+		print_set_error(shell, "buck voltage");
 		return 0;
 	}
 
-	if (buck_indx >= NPM_BUCK_COUNT) {
-		shell_error(shell, "Buck instance index is too high: no such instance.");
-		return 0;
-	}
-
-	npmx_buck_t *buck_instance = npmx_buck_get(npmx_instance, buck_indx);
-	npmx_buck_voltage_t voltage = npmx_buck_voltage_convert(buck_set);
-
-	if (voltage == NPMX_BUCK_VOLTAGE_INVALID) {
-		shell_error(shell, "Error: wrong buck voltage value.");
-		return 0;
-	}
-
-	npmx_error_t err_code = voltage_set(buck_instance, voltage);
-
-	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Success: %s mV.", argv[2]);
-	} else {
-		shell_error(shell, "Error: unable to set buck voltage.");
-	}
-
+	print_success(shell, voltage_mv, UNIT_TYPE_MILLIVOLT);
 	return 0;
 }
 
@@ -251,48 +196,32 @@ static int buck_gpio_get(const struct shell *shell, size_t argc, char **argv,
 			 npmx_error_t (*gpio_config_get)(npmx_buck_t const *,
 							 npmx_buck_gpio_config_t *))
 {
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
+	args_info_t args_info = { .expected_args = 1,
+				  .arg = {
+					  [0] = { SHELL_ARG_TYPE_UINT32_INDEX, "buck" },
+				  } };
+	if (!arguments_check(shell, argc, argv, &args_info)) {
 		return 0;
 	}
 
-	if (argc < 2) {
-		shell_error(shell, "Error: missing buck instance index.");
+	npmx_buck_t *buck_instance = buck_instance_get(shell, args_info.arg[0].result.uvalue);
+	if (buck_instance == NULL) {
 		return 0;
 	}
-
-	int err = 0;
-	uint8_t buck_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
-
-	if (err != 0) {
-		shell_error(shell, "Error: buck instance has to be an integer.");
-		return 0;
-	}
-
-	if (buck_indx >= NPM_BUCK_COUNT) {
-		shell_error(shell, "Error: buck instance index is too high: no such instance.");
-		return 0;
-	}
-
-	npmx_buck_t *buck_instance = npmx_buck_get(npmx_instance, buck_indx);
 
 	npmx_buck_gpio_config_t gpio_config;
 	npmx_error_t err_code = gpio_config_get(buck_instance, &gpio_config);
-
 	if (!check_error_code(shell, err_code)) {
-		shell_error(shell, "Error: unable to read GPIO config.");
+		print_get_error(shell, "GPIO config");
 		return 0;
 	}
 
-	int val = ((gpio_config.gpio == NPMX_BUCK_GPIO_NC) ||
-		   (gpio_config.gpio == NPMX_BUCK_GPIO_NC1)) ?
-			  -1 :
-			  ((int)gpio_config.gpio - 1);
+	int gpio_index = ((gpio_config.gpio == NPMX_BUCK_GPIO_NC) ||
+			  (gpio_config.gpio == NPMX_BUCK_GPIO_NC1)) ?
+				 -1 :
+				 ((int)gpio_config.gpio - 1);
 
-	shell_print(shell, "Value: %d %d.", val, (int)gpio_config.inverted);
-
+	shell_print(shell, "Value: %d %d.", gpio_index, gpio_config.inverted);
 	return 0;
 }
 
@@ -300,65 +229,41 @@ static int buck_gpio_set(const struct shell *shell, size_t argc, char **argv,
 			 npmx_error_t (*gpio_config_set)(npmx_buck_t const *,
 							 npmx_buck_gpio_config_t const *))
 {
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
+	args_info_t args_info = { .expected_args = 3,
+				  .arg = {
+					  [0] = { SHELL_ARG_TYPE_UINT32_INDEX, "buck" },
+					  [1] = { SHELL_ARG_TYPE_INT32_VALUE, "GPIO number" },
+					  [2] = { SHELL_ARG_TYPE_BOOL_VALUE,
+						  "GPIO inversion status" },
+				  } };
+	if (!arguments_check(shell, argc, argv, &args_info)) {
 		return 0;
 	}
 
-	if (argc < 2) {
-		shell_error(shell,
-			    "Error: missing buck instance index, GPIO number and GPIO inv state.");
+	npmx_buck_t *buck_instance = buck_instance_get(shell, args_info.arg[0].result.uvalue);
+	if (buck_instance == NULL) {
 		return 0;
 	}
 
-	if (argc < 3) {
-		shell_error(shell, "Error: missing GPIO number and GPIO inv state.");
-		return 0;
-	}
-
-	if (argc < 4) {
-		shell_error(shell, "Error: missing GPIO inv state.");
-		return 0;
-	}
-
-	int err = 0;
-	uint8_t buck_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
-	int8_t gpio_indx = CLAMP(shell_strtol(argv[2], 0, &err), INT8_MIN, INT8_MAX);
-
+	int gpio_index = args_info.arg[1].result.ivalue;
 	npmx_buck_gpio_config_t gpio_config = {
-		.inverted = !!shell_strtoul(argv[3], 0, &err),
+		.inverted = args_info.arg[2].result.bvalue,
 	};
-
-	if (err != 0) {
-		shell_error(
-			shell,
-			"Error: instance index, GPIO number, GPIO inv state have to be integers.");
-		return 0;
-	}
-
-	if (buck_indx >= NPM_BUCK_COUNT) {
-		shell_error(shell, "Error: Buck instance index is too high: no such instance.");
-		return 0;
-	}
-
-	npmx_buck_t *buck_instance = npmx_buck_get(npmx_instance, buck_indx);
 
 	static const npmx_buck_gpio_t gpios[] = {
 		NPMX_BUCK_GPIO_0, NPMX_BUCK_GPIO_1, NPMX_BUCK_GPIO_2,
 		NPMX_BUCK_GPIO_3, NPMX_BUCK_GPIO_4,
 	};
 
-	if (!check_pin_configuration_correctness(shell, gpio_indx)) {
+	if (!check_pin_configuration_correctness(shell, gpio_index)) {
 		return 0;
 	}
 
-	if (gpio_indx == -1) {
+	if (gpio_index == -1) {
 		gpio_config.gpio = NPMX_BUCK_GPIO_NC;
 	} else {
-		if ((gpio_indx >= 0) && (gpio_indx < ARRAY_SIZE(gpios))) {
-			gpio_config.gpio = gpios[gpio_indx];
+		if ((gpio_index >= 0) && (gpio_index < ARRAY_SIZE(gpios))) {
+			gpio_config.gpio = gpios[gpio_index];
 		} else {
 			shell_error(shell, "Error: wrong GPIO index.");
 			return 0;
@@ -366,14 +271,12 @@ static int buck_gpio_set(const struct shell *shell, size_t argc, char **argv,
 	}
 
 	npmx_error_t err_code = gpio_config_set(buck_instance, &gpio_config);
-
-	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Success: %d.", gpio_indx);
-	} else {
-		shell_error(shell, "Error: unable to set GPIO config.");
+	if (!check_error_code(shell, err_code)) {
+		print_set_error(shell, "GPIO config");
 		return 0;
 	}
 
+	print_success(shell, gpio_index, UNIT_TYPE_NONE);
 	return 0;
 }
 
@@ -409,252 +312,156 @@ static int cmd_buck_gpio_forced_pwm_set(const struct shell *shell, size_t argc, 
 
 static int cmd_buck_mode_set(const struct shell *shell, size_t argc, char **argv)
 {
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
+	args_info_t args_info = { .expected_args = 2,
+				  .arg = {
+					  [0] = { SHELL_ARG_TYPE_UINT32_INDEX, "buck" },
+					  [1] = { SHELL_ARG_TYPE_UINT32_VALUE, "mode" },
+				  } };
+	if (!arguments_check(shell, argc, argv, &args_info)) {
 		return 0;
 	}
 
-	if (argc < 2) {
-		shell_error(shell, "Error: missing buck instance index and buck mode.");
+	npmx_buck_t *buck_instance = buck_instance_get(shell, args_info.arg[0].result.uvalue);
+	if (buck_instance == NULL) {
 		return 0;
 	}
 
-	if (argc < 3) {
-		shell_error(shell, "Error: missing buck mode.");
-		return 0;
-	}
-
-	int err = 0;
-	uint8_t buck_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
-	int buck_mode = shell_strtol(argv[2], 0, &err);
-
-	if (err != 0) {
-		shell_error(shell, "Error: instance index and mode have to be integers.");
-		return 0;
-	}
-
-	if (buck_indx >= NPM_BUCK_COUNT) {
-		shell_error(shell, "Error: Buck instance index is too high: no such instance.");
-		return 0;
-	}
-
-	npmx_buck_t *buck_instance = npmx_buck_get(npmx_instance, buck_indx);
-	npmx_buck_mode_t mode;
-
-	switch (buck_mode) {
+	uint32_t mode = args_info.arg[1].result.uvalue;
+	npmx_buck_mode_t buck_mode;
+	switch (mode) {
 	case 0:
-		mode = NPMX_BUCK_MODE_AUTO;
+		buck_mode = NPMX_BUCK_MODE_AUTO;
 		break;
 	case 1:
-		mode = NPMX_BUCK_MODE_PFM;
+		buck_mode = NPMX_BUCK_MODE_PFM;
 		break;
 	case 2:
-		mode = NPMX_BUCK_MODE_PWM;
+		buck_mode = NPMX_BUCK_MODE_PWM;
 		break;
 	default:
-		shell_error(shell, "Error: Buck mode can be 0-AUTO, 1-PFM, 2-PWM.");
+		shell_error(shell, "Error: Wrong mode:");
+		print_hint_error(shell, 0, "AUTO");
+		print_hint_error(shell, 1, "PFM");
+		print_hint_error(shell, 2, "PWM");
 		return 0;
 	}
 
-	npmx_error_t err_code = npmx_buck_converter_mode_set(buck_instance, mode);
-
-	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Success: %d.", buck_mode);
-	} else {
-		shell_error(shell, "Error: unable to set buck mode.");
+	npmx_error_t err_code = npmx_buck_converter_mode_set(buck_instance, buck_mode);
+	if (!check_error_code(shell, err_code)) {
+		print_set_error(shell, "buck mode");
+		return 0;
 	}
 
+	print_success(shell, mode, UNIT_TYPE_NONE);
 	return 0;
 }
 
 static int cmd_buck_active_discharge_get(const struct shell *shell, size_t argc, char **argv)
 {
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
+	args_info_t args_info = { .expected_args = 1,
+				  .arg = {
+					  [0] = { SHELL_ARG_TYPE_UINT32_INDEX, "buck" },
+				  } };
+	if (!arguments_check(shell, argc, argv, &args_info)) {
 		return 0;
 	}
 
-	if (argc < 2) {
-		shell_error(shell, "Error: missing buck instance index.");
+	npmx_buck_t *buck_instance = buck_instance_get(shell, args_info.arg[0].result.uvalue);
+	if (buck_instance == NULL) {
 		return 0;
 	}
 
-	int err = 0;
-	uint8_t buck_index = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
-
-	if (err != 0) {
-		shell_error(shell, "Error: instance index has to be an integer.");
-		return 0;
-	}
-
-	if (buck_index >= NPM_BUCK_COUNT) {
-		shell_error(shell, "Error: Buck instance index is too high: no such instance.");
-		return 0;
-	}
-
-	npmx_buck_t *buck_instance = npmx_buck_get(npmx_instance, buck_index);
 	bool discharge_enable;
-
 	npmx_error_t err_code =
 		npmx_buck_active_discharge_enable_get(buck_instance, &discharge_enable);
-
-	if (err_code == NPMX_SUCCESS) {
-		shell_print(shell, "Value: %d.", discharge_enable);
-	} else {
-		shell_error(shell, "Error: unable to read buck active discharge status.");
+	if (!check_error_code(shell, err_code)) {
+		print_get_error(shell, "active discharge");
+		return 0;
 	}
 
+	print_value(shell, discharge_enable, UNIT_TYPE_NONE);
 	return 0;
 }
 
 static int cmd_buck_active_discharge_set(const struct shell *shell, size_t argc, char **argv)
 {
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
+	args_info_t args_info = { .expected_args = 2,
+				  .arg = {
+					  [0] = { SHELL_ARG_TYPE_UINT32_INDEX, "buck" },
+					  [1] = { SHELL_ARG_TYPE_BOOL_VALUE, "active discharge" },
+				  } };
+	if (!arguments_check(shell, argc, argv, &args_info)) {
 		return 0;
 	}
 
-	if (argc < 2) {
-		shell_error(shell, "Error: missing buck instance index and new status value.");
+	npmx_buck_t *buck_instance = buck_instance_get(shell, args_info.arg[0].result.uvalue);
+	if (buck_instance == NULL) {
 		return 0;
 	}
 
-	if (argc < 3) {
-		shell_error(shell, "Error: missing new status value.");
-		return 0;
-	}
-
-	int err = 0;
-	uint8_t buck_index = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
-	uint8_t discharge_enable = CLAMP(shell_strtoul(argv[2], 0, &err), 0, UINT8_MAX);
-
-	if (err != 0) {
-		shell_error(shell, "Error: instance index has to be an integer.");
-		return 0;
-	}
-
-	if (buck_index >= NPM_BUCK_COUNT) {
-		shell_error(shell, "Error: Buck instance index is too high: no such instance.");
-		return 0;
-	}
-
-	if (discharge_enable > 1) {
-		shell_error(
-			shell,
-			"Error: invalid active discharge status. Accepted values: 0 = disabled, 1 = enabled.");
-		return 0;
-	}
-
-	npmx_buck_t *buck_instance = npmx_buck_get(npmx_instance, buck_index);
-
+	bool active_discharge = args_info.arg[0].result.bvalue;
 	npmx_error_t err_code =
-		npmx_buck_active_discharge_enable_set(buck_instance, discharge_enable == 1);
-
-	if (err_code == NPMX_SUCCESS) {
-		shell_print(shell, "Success: %d.", discharge_enable);
-	} else {
-		shell_error(shell, "Error: unable to set buck active discharge status.");
+		npmx_buck_active_discharge_enable_set(buck_instance, active_discharge);
+	if (!check_error_code(shell, err_code)) {
+		print_set_error(shell, "active discharge");
+		return 0;
 	}
 
+	print_success(shell, active_discharge, UNIT_TYPE_NONE);
 	return 0;
 }
 
 static int cmd_buck_status_power_get(const struct shell *shell, size_t argc, char **argv)
 {
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
+	args_info_t args_info = { .expected_args = 1,
+				  .arg = {
+					  [0] = { SHELL_ARG_TYPE_UINT32_INDEX, "buck" },
+				  } };
+	if (!arguments_check(shell, argc, argv, &args_info)) {
 		return 0;
 	}
 
-	if (argc < 2) {
-		shell_error(shell, "Error: missing buck instance index.");
+	npmx_buck_t *buck_instance = buck_instance_get(shell, args_info.arg[0].result.uvalue);
+	if (buck_instance == NULL) {
 		return 0;
 	}
 
-	int err = 0;
-	uint8_t buck_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
-
-	if (err != 0) {
-		shell_error(shell, "Error: instance index have to be an integer.");
-		return 0;
-	}
-
-	if (buck_indx >= NPM_BUCK_COUNT) {
-		shell_error(shell, "Error: Buck instance index is too high: no such instance.");
-		return 0;
-	}
-
-	npmx_buck_t *buck_instance = npmx_buck_get(npmx_instance, buck_indx);
 	npmx_buck_status_t buck_status;
-
 	npmx_error_t err_code = npmx_buck_status_get(buck_instance, &buck_status);
-
-	if (err_code == NPMX_SUCCESS) {
-		shell_print(shell, "Buck power status: %d.", buck_status.powered);
-	} else {
-		shell_error(shell, "Error: unable to read buck power status.");
+	if (!check_error_code(shell, err_code)) {
+		print_get_error(shell, "buck status");
+		return 0;
 	}
 
+	print_value(shell, buck_status.powered, UNIT_TYPE_NONE);
 	return 0;
 }
 
 static int cmd_buck_status_power_set(const struct shell *shell, size_t argc, char **argv)
 {
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
+	args_info_t args_info = { .expected_args = 2,
+				  .arg = {
+					  [0] = { SHELL_ARG_TYPE_UINT32_INDEX, "buck" },
+					  [1] = { SHELL_ARG_TYPE_BOOL_VALUE, "status" },
+				  } };
+	if (!arguments_check(shell, argc, argv, &args_info)) {
 		return 0;
 	}
 
-	if (argc < 2) {
-		shell_error(shell, "Error: missing buck instance index and new status value.");
+	npmx_buck_t *buck_instance = buck_instance_get(shell, args_info.arg[0].result.uvalue);
+	if (buck_instance == NULL) {
 		return 0;
 	}
 
-	if (argc < 3) {
-		shell_error(shell, "Error: missing new status value.");
-		return 0;
-	}
-
-	int err = 0;
-	uint8_t buck_indx = CLAMP(shell_strtoul(argv[1], 0, &err), 0, UINT8_MAX);
-	uint8_t buck_set = CLAMP(shell_strtoul(argv[2], 0, &err), 0, UINT8_MAX);
-
-	if (err != 0) {
-		shell_error(shell, "Error: instance index and status have to be integers.");
-		return 0;
-	}
-
-	if (buck_indx >= NPM_BUCK_COUNT) {
-		shell_error(shell, "Error: buck instance index is too high: no such instance.");
-		return 0;
-	}
-
-	if (buck_set > 1) {
-		shell_error(shell, "Error: wrong new status value.");
-		return 0;
-	}
-
-	npmx_buck_task_t buck_task = buck_set == 1 ? NPMX_BUCK_TASK_ENABLE : NPMX_BUCK_TASK_DISABLE;
-	npmx_buck_t *buck_instance = npmx_buck_get(npmx_instance, buck_indx);
-
+	bool status = args_info.arg[1].result.bvalue;
+	npmx_buck_task_t buck_task = status ? NPMX_BUCK_TASK_ENABLE : NPMX_BUCK_TASK_DISABLE;
 	npmx_error_t err_code = npmx_buck_task_trigger(buck_instance, buck_task);
-
-	if (check_error_code(shell, err_code)) {
-		shell_print(shell, "Success: %d.", buck_set);
-	} else {
-		shell_error(shell, "Error: unable to set buck state.");
+	if (!check_error_code(shell, err_code)) {
+		print_set_error(shell, "buck status");
+		return 0;
 	}
 
+	print_success(shell, status, UNIT_TYPE_NONE);
 	return 0;
 }
 
