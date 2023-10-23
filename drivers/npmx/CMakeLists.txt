@@ -50,6 +50,7 @@ if(CONFIG_NPMX_SHELL)
     zephyr_library_sources(shell/npmx_shell_common.c)
 
     zephyr_library_sources(shell/npmx_shell_adc.c)
+    zephyr_library_sources(shell/npmx_shell_buck.c)
 endif()
 
 # Get npmx include file
