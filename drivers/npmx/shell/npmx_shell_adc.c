@@ -111,6 +111,42 @@ static bool ntc_temperature_to_resistance(const struct shell *shell,
 	return true;
 }
 
+static int cmd_adc_meas_take_vbat(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	npmx_adc_t *adc_instance = adc_instance_get(shell);
+	if (adc_instance == NULL) {
+		return 0;
+	}
+
+	npmx_error_t err_code = npmx_adc_task_trigger(adc_instance, NPMX_ADC_TASK_SINGLE_SHOT_VBAT);
+	if (!check_error_code(shell, err_code)) {
+		shell_error(shell, "Error: unable to trigger the measurement.");
+		return 0;
+	}
+
+	int32_t voltage_mv;
+	bool meas_get = false;
+	while (!meas_get) {
+		err_code = npmx_adc_meas_check(adc_instance, NPMX_ADC_MEAS_VBAT, &meas_get);
+		if (!check_error_code(shell, err_code)) {
+			print_get_error(shell, "measurement status");
+			return 0;
+		}
+	}
+
+	err_code = npmx_adc_meas_get(adc_instance, NPMX_ADC_MEAS_VBAT, &voltage_mv);
+	if (!check_error_code(shell, err_code)) {
+		print_get_error(shell, "measurement");
+		return 0;
+	}
+
+	print_value(shell, voltage_mv, UNIT_TYPE_MILLIVOLT);
+	return 0;
+}
+
 static int adc_ntc_get(const struct shell *shell, adc_ntc_config_param_t config_type)
 {
 	npmx_adc_t *adc_instance = adc_instance_get(shell);
@@ -341,17 +377,9 @@ static int adc_ntc_set(const struct shell *shell, size_t argc, char **argv,
 	return 0;
 }
 
-static int cmd_adc_ntc_type_get(const struct shell *shell, size_t argc, char **argv)
+static int cmd_adc_ntc_beta_set(const struct shell *shell, size_t argc, char **argv)
 {
-	ARG_UNUSED(argc);
-	ARG_UNUSED(argv);
-
-	return adc_ntc_get(shell, ADC_NTC_CONFIG_PARAM_TYPE);
-}
-
-static int cmd_adc_ntc_type_set(const struct shell *shell, size_t argc, char **argv)
-{
-	return adc_ntc_set(shell, argc, argv, ADC_NTC_CONFIG_PARAM_TYPE);
+	return adc_ntc_set(shell, argc, argv, ADC_NTC_CONFIG_PARAM_BETA);
 }
 
 static int cmd_adc_ntc_beta_get(const struct shell *shell, size_t argc, char **argv)
@@ -362,64 +390,18 @@ static int cmd_adc_ntc_beta_get(const struct shell *shell, size_t argc, char **a
 	return adc_ntc_get(shell, ADC_NTC_CONFIG_PARAM_BETA);
 }
 
-static int cmd_adc_ntc_beta_set(const struct shell *shell, size_t argc, char **argv)
+static int cmd_adc_ntc_type_set(const struct shell *shell, size_t argc, char **argv)
 {
-	return adc_ntc_set(shell, argc, argv, ADC_NTC_CONFIG_PARAM_BETA);
+	return adc_ntc_set(shell, argc, argv, ADC_NTC_CONFIG_PARAM_TYPE);
 }
 
-static int cmd_adc_meas_take_vbat(const struct shell *shell, size_t argc, char **argv)
+static int cmd_adc_ntc_type_get(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
 
-	npmx_adc_t *adc_instance = adc_instance_get(shell);
-	if (adc_instance == NULL) {
-		return 0;
-	}
-
-	npmx_error_t err_code = npmx_adc_task_trigger(adc_instance, NPMX_ADC_TASK_SINGLE_SHOT_VBAT);
-	if (!check_error_code(shell, err_code)) {
-		shell_error(shell, "Error: unable to trigger the measurement.");
-		return 0;
-	}
-
-	int32_t voltage_mv;
-	bool meas_get = false;
-	while (!meas_get) {
-		err_code = npmx_adc_meas_check(adc_instance, NPMX_ADC_MEAS_VBAT, &meas_get);
-		if (!check_error_code(shell, err_code)) {
-			print_get_error(shell, "measurement status");
-			return 0;
-		}
-	}
-
-	err_code = npmx_adc_meas_get(adc_instance, NPMX_ADC_MEAS_VBAT, &voltage_mv);
-	if (!check_error_code(shell, err_code)) {
-		print_get_error(shell, "measurement");
-		return 0;
-	}
-
-	print_value(shell, voltage_mv, UNIT_TYPE_MILLIVOLT);
-	return 0;
+	return adc_ntc_get(shell, ADC_NTC_CONFIG_PARAM_TYPE);
 }
-
-/* Creating subcommands (level 4 command) array for command "adc ntc type". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_adc_ntc_type,
-			       SHELL_CMD(get, NULL, "Get ADC NTC type", cmd_adc_ntc_type_get),
-			       SHELL_CMD(set, NULL, "Set ADC NTC type", cmd_adc_ntc_type_set),
-			       SHELL_SUBCMD_SET_END);
-
-/* Creating subcommands (level 4 command) array for command "adc ntc beta". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_adc_ntc_beta,
-			       SHELL_CMD(get, NULL, "Get ADC NTC beta value", cmd_adc_ntc_beta_get),
-			       SHELL_CMD(set, NULL, "Set ADC NTC beta value", cmd_adc_ntc_beta_set),
-			       SHELL_SUBCMD_SET_END);
-
-/* Creating subcommands (level 3 command) array for command "adc ntc". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_adc_ntc,
-			       SHELL_CMD(type, &sub_adc_ntc_type, "ADC NTC type", NULL),
-			       SHELL_CMD(beta, &sub_adc_ntc_beta, "ADC NTC beta", NULL),
-			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 4 command) array for command "adc take meas". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_adc_meas_take,
@@ -432,9 +414,27 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_adc_meas,
 			       SHELL_CMD(take, &sub_adc_meas_take, "Take ADC measurement", NULL),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating subcommands (level 4 command) array for command "adc ntc beta". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_adc_ntc_beta,
+			       SHELL_CMD(set, NULL, "Set ADC NTC beta value", cmd_adc_ntc_beta_set),
+			       SHELL_CMD(get, NULL, "Get ADC NTC beta value", cmd_adc_ntc_beta_get),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 4 command) array for command "adc ntc type". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_adc_ntc_type,
+			       SHELL_CMD(set, NULL, "Set ADC NTC type", cmd_adc_ntc_type_set),
+			       SHELL_CMD(get, NULL, "Get ADC NTC type", cmd_adc_ntc_type_get),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 3 command) array for command "adc ntc". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_adc_ntc,
+			       SHELL_CMD(beta, &sub_adc_ntc_beta, "ADC NTC beta", NULL),
+			       SHELL_CMD(type, &sub_adc_ntc_type, "ADC NTC type", NULL),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating subcommands (level 2 command) array for command "adc". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_adc, SHELL_CMD(ntc, &sub_adc_ntc, "ADC NTC value", NULL),
-			       SHELL_CMD(meas, &sub_adc_meas, "ADC measurement", NULL),
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_adc, SHELL_CMD(meas, &sub_adc_meas, "ADC measurement", NULL),
+			       SHELL_CMD(ntc, &sub_adc_ntc, "ADC NTC value", NULL),
 			       SHELL_SUBCMD_SET_END);
 
 void dynamic_cmd_adc(size_t index, struct shell_static_entry *entry)
