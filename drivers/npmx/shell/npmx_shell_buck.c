@@ -473,7 +473,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_active_discharge,
 					 cmd_buck_active_discharge_get),
 			       SHELL_SUBCMD_SET_END);
 
-/* Creating dictionary subcommands (level 4 command) array for command "buck gpio on/off". */
+/* Creating dictionary subcommands (level 4 command) array for command "buck gpio on_off". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_gpio_on_off,
 			       SHELL_CMD(set, NULL, "Set buck GPIO on/off",
 					 cmd_buck_gpio_on_off_set),
@@ -482,11 +482,11 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_gpio_on_off,
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating dictionary subcommands (level 4 command) array for command "buck gpio pwm_force". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_gpio_forced_pwm,
-			       SHELL_CMD(set, NULL, "Set buck GPIO PWM forcing",
-					 cmd_buck_gpio_forced_pwm_set),
-			       SHELL_CMD(get, NULL, "Get buck GPIO PWM forcing",
-					 cmd_buck_gpio_forced_pwm_get),
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_gpio_pwm_force,
+			       SHELL_CMD(set, NULL, "Set buck GPIO PWM force",
+					 cmd_buck_gpio_pwm_force_set),
+			       SHELL_CMD(get, NULL, "Get buck GPIO PWM force",
+					 cmd_buck_gpio_pwm_force_get),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating dictionary subcommands (level 4 command) array for command "buck gpio retention". */
@@ -501,23 +501,16 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_gpio_retention,
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_gpio,
 			       SHELL_CMD(on_off, &sub_buck_gpio_on_off,
 					 "Select GPIO used as buck's on/off", NULL),
-			       SHELL_CMD(pwm_force, &sub_buck_gpio_forced_pwm,
+			       SHELL_CMD(pwm_force, &sub_buck_gpio_pwm_force,
 					 "Select GPIO used as buck's PWM forcing", NULL),
 			       SHELL_CMD(retention, &sub_buck_gpio_retention,
 					 "Select GPIO used as buck's retention", NULL),
 			       SHELL_SUBCMD_SET_END);
 
-/* Creating subcommands (level 4 command) array for command "buck status power". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_status_power,
-			       SHELL_CMD(set, NULL, "Set buck power status",
-					 cmd_buck_status_power_set),
-			       SHELL_CMD(get, NULL, "Get buck power status",
-					 cmd_buck_status_power_get),
-			       SHELL_SUBCMD_SET_END);
-
 /* Creating subcommands (level 3 command) array for command "buck status". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_status,
-			       SHELL_CMD(power, &sub_buck_status_power, "Buck power status", NULL),
+			       SHELL_CMD(set, NULL, "Set buck status", cmd_buck_status_set),
+			       SHELL_CMD(get, NULL, "Get buck status", cmd_buck_status_get),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating dictionary subcommands (level 4 command) array for command "buck voltage normal". */
@@ -542,29 +535,23 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD(retention, &sub_buck_voltage_retention, "Buck retention voltage", NULL),
 	SHELL_SUBCMD_SET_END);
 
-/* Creating dictionary subcommands (level 4 command) array for command "buck vout select". */
-SHELL_STATIC_SUBCMD_SET_CREATE(
-	sub_buck_vout_select,
-	SHELL_CMD(set, NULL, "Set buck output voltage reference source, 0-vset pin, 1-software",
-		  cmd_buck_vout_select_set),
-	SHELL_CMD(get, NULL, "Get buck output voltage reference source", cmd_buck_vout_select_get),
-	SHELL_SUBCMD_SET_END);
-
-/* Creating dictionary subcommands (level 3 command) array for command "buck vout". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_vout,
-			       SHELL_CMD(select, &sub_buck_vout_select, "Buck reference source",
-					 NULL),
+/* Creating dictionary subcommands (level 3 command) array for command "buck vout_select". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_vout_select,
+			       SHELL_CMD(set, NULL, "Set buck voltage reference source",
+					 cmd_buck_vout_select_set),
+			       SHELL_CMD(get, NULL, "Get buck voltage reference source",
+					 cmd_buck_vout_select_get),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 2 command) array for command "buck". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck,
 			       SHELL_CMD(active_discharge, &sub_buck_active_discharge,
-					 "Enable or disable buck active discharge", NULL),
-			       SHELL_CMD(gpio, &sub_buck_gpio, "Buck GPIOs", NULL),
+					 "Buck active discharge", NULL),
+			       SHELL_CMD(gpio, &sub_buck_gpio, "Buck GPIO", NULL),
 			       SHELL_CMD(mode, NULL, "Set buck mode", cmd_buck_mode_set),
 			       SHELL_CMD(status, &sub_buck_status, "Buck status", NULL),
 			       SHELL_CMD(voltage, &sub_buck_voltage, "Buck voltage", NULL),
-			       SHELL_CMD(vout, &sub_buck_vout,
+			       SHELL_CMD(vout_select, &sub_buck_vout_select,
 					 "Buck output voltage reference source", NULL),
 			       SHELL_SUBCMD_SET_END);
 
