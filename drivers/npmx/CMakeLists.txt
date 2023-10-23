@@ -44,7 +44,10 @@ zephyr_library_sources(${SRC_DIR}/npmx_vbusin.c)
 zephyr_library_sources(npmx_driver.c)
 
 if(CONFIG_NPMX_SHELL)
+    zephyr_include_directories(shell)
+
     zephyr_library_sources(npmx_shell.c)
+    zephyr_library_sources(shell/npmx_shell_common.c)
 endif()
 
 # Get npmx include file

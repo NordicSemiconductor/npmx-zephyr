@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include <npmx_shell_common.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -84,45 +85,6 @@ typedef struct {
 } temp_recalculate_data_t;
 
 static const struct device *pmic_dev = DEVICE_DT_GET(DT_NODELABEL(npm_0));
-
-static bool check_error_code(const struct shell *shell, npmx_error_t err_code)
-{
-	switch (err_code) {
-	case NPMX_SUCCESS:
-		return true;
-	case NPMX_ERROR_INVALID_PARAM: {
-		shell_error(shell, "Error: invalid parameter for npmx function.");
-		return false;
-	}
-	case NPMX_ERROR_IO: {
-		shell_error(shell, "Error: IO error.");
-		return false;
-	}
-	case NPMX_ERROR_INVALID_MEAS:
-		shell_error(shell, "Error: invalid measurement.");
-		return false;
-	}
-
-	return false;
-}
-
-static bool check_pin_configuration_correctness(const struct shell *shell, int8_t gpio_idx)
-{
-	int8_t pmic_int_pin = (int8_t)npmx_driver_int_pin_get(pmic_dev);
-	int8_t pmic_pof_pin = (int8_t)npmx_driver_pof_pin_get(pmic_dev);
-
-	if ((pmic_int_pin != -1) && (pmic_int_pin == gpio_idx)) {
-		shell_error(shell, "Error: GPIO used as interrupt.");
-		return false;
-	}
-
-	if ((pmic_pof_pin != -1) && (pmic_pof_pin == gpio_idx)) {
-		shell_error(shell, "Error: GPIO used as POF.");
-		return false;
-	}
-
-	return true;
-}
 
 static int cmd_charger_termination_voltage_get(
 	const struct shell *shell, size_t argc, char **argv,
