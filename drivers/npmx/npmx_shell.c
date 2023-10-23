@@ -4811,13 +4811,13 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_ship, SHELL_CMD(config, &sub_ship_config, "Sh
 
 /* Creating subcommands (level 1 command) array for command "npmx". */
 SHELL_STATIC_SUBCMD_SET_CREATE(
-	sub_npmx, SHELL_CMD(charger, &sub_charger, "Charger", NULL),
-	SHELL_CMD(buck, &sub_buck, "Buck", NULL), SHELL_CMD(ldsw, &sub_ldsw, "LDSW", NULL),
-	SHELL_CMD(leds, &sub_leds, "LEDs", NULL), SHELL_CMD(gpio, &sub_gpio, "GPIOs", NULL),
-	SHELL_CMD(adc, &sub_adc, "ADC", NULL), SHELL_CMD(pof, &sub_pof, "POF", NULL),
-	SHELL_CMD(timer, &sub_timer, "Timer", NULL),
+	sub_npmx, SHELL_CMD(adc, &sub_adc, "ADC", NULL), SHELL_CMD(buck, &sub_buck, "Buck", NULL),
+	SHELL_CMD(charger, &sub_charger, "Charger", NULL),
 	SHELL_CMD(errlog, &sub_errlog, "Reset errors logs", NULL),
-	SHELL_CMD(vbusin, &sub_vbusin, "VBUSIN", NULL), SHELL_CMD(ship, &sub_ship, "SHIP", NULL),
+	SHELL_CMD(gpio, &sub_gpio, "GPIOs", NULL), SHELL_CMD(ldsw, &sub_ldsw, "LDSW", NULL),
+	SHELL_CMD(led, &sub_leds, "LEDs", NULL), SHELL_CMD(pof, &sub_pof, "POF", NULL),
+	SHELL_CMD(ship, &sub_ship, "SHIP", NULL), SHELL_CMD(timer, &sub_timer, "Timer", NULL),
+	SHELL_CMD(vbusin, &sub_vbusin, "VBUSIN", NULL),
 	SHELL_CMD(reset, NULL, "Restart device", cmd_reset), SHELL_SUBCMD_SET_END);
 
 /* Creating root (level 0) command "npmx" without a handler. */
