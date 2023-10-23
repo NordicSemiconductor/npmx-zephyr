@@ -18,7 +18,7 @@ repos:
     language: python
   - id: mixed-line-ending
     language: python
-    args: ['--fix=lf']
+    args: ['--fix=crlf']
   - id: trailing-whitespace
     language: python
 - repo: https://github.com/Lucas-C/pre-commit-hooks
