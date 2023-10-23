@@ -111,7 +111,7 @@ static bool ntc_temperature_to_resistance(const struct shell *shell,
 	return true;
 }
 
-static int cmd_adc_meas_take_vbat(const struct shell *shell, size_t argc, char **argv)
+static int cmd_adc_meas_vbat_get(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
@@ -403,15 +403,9 @@ static int cmd_adc_ntc_type_get(const struct shell *shell, size_t argc, char **a
 	return adc_ntc_get(shell, ADC_NTC_CONFIG_PARAM_TYPE);
 }
 
-/* Creating subcommands (level 4 command) array for command "adc take meas". */
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_adc_meas_take,
-			       SHELL_CMD(vbat, NULL, "Read battery voltage",
-					 cmd_adc_meas_take_vbat),
-			       SHELL_SUBCMD_SET_END);
-
 /* Creating subcommands (level 3 command) array for command "adc meas". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_adc_meas,
-			       SHELL_CMD(take, &sub_adc_meas_take, "Take ADC measurement", NULL),
+			       SHELL_CMD(vbat, NULL, "Get battery voltage", cmd_adc_meas_vbat_get),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 4 command) array for command "adc ntc beta". */
@@ -434,8 +428,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_adc_ntc,
 
 /* Creating subcommands (level 2 command) array for command "adc". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_adc, SHELL_CMD(meas, &sub_adc_meas, "ADC measurement", NULL),
-			       SHELL_CMD(ntc, &sub_adc_ntc, "ADC NTC value", NULL),
-			       SHELL_SUBCMD_SET_END);
+			       SHELL_CMD(ntc, &sub_adc_ntc, "ADC NTC", NULL), SHELL_SUBCMD_SET_END);
 
 void dynamic_cmd_adc(size_t index, struct shell_static_entry *entry)
 {
