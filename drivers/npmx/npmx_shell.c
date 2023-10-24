@@ -3658,6 +3658,36 @@ static int cmd_timer_config_period_set(const struct shell *shell, size_t argc, c
 	return timer_config_set(shell, argc, argv, TIMER_CONFIG_TYPE_COMPARE);
 }
 
+static const char *shell_err_to_field(npmx_callback_type_t type, uint8_t bit)
+{
+	static const char * err_fieldnames[][8] =
+	{
+		[NPMX_CALLBACK_TYPE_RSTCAUSE] =
+		{
+			[0] = "SHIPMODEEXIT",    [1] = "BOOTMONITORTIMEOUT",
+			[2] = "WATCHDOGTIMEOUT", [3] = "LONGPRESSTIMEOUT",
+			[4] = "THERMALSHUTDOWN", [5] = "VSYSLOW",
+			[6] = "SWRESET",
+		},
+		[NPMX_CALLBACK_TYPE_CHARGER_ERROR] =
+		{
+			[0] = "NTCSENSORERR",  [1] = "VBATSENSORERR",
+			[2] = "VBATLOW",       [3] = "VTRICKLE",
+			[4] = "MEASTIMEOUT",   [5] = "CHARGETIMEOUT",
+			[6] = "TRICKLETIMEOUT",
+		},
+		[NPMX_CALLBACK_TYPE_SENSOR_ERROR] =
+		{
+			[0] = "SENSORNTCCOLD",  [1] = "SENSORNTCCOOL",
+			[2] = "SENSORNTCWARM",  [3] = "SENSORNTCHOT",
+			[4] = "SENSORVTERM",    [5] = "SENSORRECHARGE",
+			[6] = "SENSORVTRICKLE", [7] = "SENSORVBATLOW",
+		},
+	};
+
+	return err_fieldnames[type][bit];
+}
+
 static void print_errlog(npmx_instance_t *p_pm, npmx_callback_type_t type, uint8_t mask)
 {
 	const struct shell *shell = (struct shell *)npmx_core_context_get(p_pm);
@@ -3665,7 +3695,7 @@ static void print_errlog(npmx_instance_t *p_pm, npmx_callback_type_t type, uint8
 	shell_print(shell, "%s:", npmx_callback_to_str(type));
 	for (uint8_t i = 0; i < 8; i++) {
 		if ((1U << i) & mask) {
-			shell_print(shell, "\t%s", npmx_callback_bit_to_str(type, i));
+			shell_print(shell, "\t%s", shell_err_to_field(type, i));
 		}
 	}
 }
