@@ -57,6 +57,7 @@ if(CONFIG_NPMX_SHELL)
     zephyr_library_sources(shell/pof.c)
     zephyr_library_sources(shell/ship.c)
     zephyr_library_sources(shell/timer.c)
+    zephyr_library_sources(shell/vbusin.c)
 endif()
 
 # Get npmx include file
