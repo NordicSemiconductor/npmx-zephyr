@@ -3494,6 +3494,56 @@ static int cmd_timer_config_prescaler_get(const struct shell *shell, size_t argc
 
 	return timer_config_get(shell, TIMER_CONFIG_PARAM_PRESCALER);
 }
+static int timer_trigger_task(const struct shell *shell, npmx_timer_task_t task)
+{
+	npmx_timer_t *timer_instance = timer_instance_get(shell);
+	if (timer_instance == NULL) {
+		return 0;
+	}
+
+	npmx_error_t err_code = npmx_timer_task_trigger(timer_instance, task);
+
+	if (!check_error_code(shell, err_code)) {
+		print_set_error(shell, "timer task");
+		return 0;
+	}
+
+	print_success(shell, true, UNIT_TYPE_NONE);
+
+	return 0;
+}
+
+static int cmd_timer_config_strobe(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	return timer_trigger_task(shell, NPMX_TIMER_TASK_STROBE);
+}
+
+static int cmd_timer_disable(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	return timer_trigger_task(shell, NPMX_TIMER_TASK_DISABLE);
+}
+
+static int cmd_timer_enable(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	return timer_trigger_task(shell, NPMX_TIMER_TASK_ENABLE);
+}
+
+static int cmd_timer_watchdog_kick(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	return timer_trigger_task(shell, NPMX_TIMER_TASK_KICK);
+}
 
 static int cmd_vbusin_current_limit_set(const struct shell *shell, size_t argc, char **argv)
 {
@@ -4230,11 +4280,20 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD(compare, &sub_timer_config_compare, "Timer compare value", NULL),
 	SHELL_CMD(mode, &sub_timer_config_mode, "Timer mode selection", NULL),
 	SHELL_CMD(prescaler, &sub_timer_config_prescaler, "Timer prescaler selection", NULL),
-	SHELL_SUBCMD_SET_END);
+	SHELL_CMD(strobe, NULL, "Timer strobe", cmd_timer_config_strobe), SHELL_SUBCMD_SET_END);
+
+/* Creating subcommands (level 3 command) array for command "timer watchdog". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_timer_watchdog,
+			       SHELL_CMD(kick, NULL, "Kick watchdog timer",
+					 cmd_timer_watchdog_kick),
+			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 2 command) array for command "timer". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_timer,
 			       SHELL_CMD(config, &sub_timer_config, "Timer config", NULL),
+			       SHELL_CMD(disable, NULL, "Timer stop", cmd_timer_disable),
+			       SHELL_CMD(enable, NULL, "Timer start", cmd_timer_enable),
+			       SHELL_CMD(watchdog, &sub_timer_watchdog, "Timer watchdog", NULL),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating subcommands (level 3 command) array for command "vbusin current_limit". */
