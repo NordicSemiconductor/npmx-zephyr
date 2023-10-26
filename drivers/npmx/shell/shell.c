@@ -4,15 +4,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <shell/shell_common.h>
-#include <npmx.h>
+#include "shell_common.h"
 #include <npmx_driver.h>
-#include <zephyr/kernel.h>
-#include <zephyr/shell/shell.h>
-#include <assert.h>
-#include <ctype.h>
-#include <math.h>
-#include <stdlib.h>
 
 static const struct device *pmic_dev = DEVICE_DT_GET(DT_NODELABEL(npm_0));
 
