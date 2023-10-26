@@ -53,6 +53,7 @@ if(CONFIG_NPMX_SHELL)
     zephyr_library_sources(shell/errlog.c)
     zephyr_library_sources(shell/gpio.c)
     zephyr_library_sources(shell/ldsw.c)
+    zephyr_library_sources(shell/led.c)
 endif()
 
 # Get npmx include file
