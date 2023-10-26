@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include <shell/shell_common.h>
 #include <npmx.h>
 #include <npmx_driver.h>
 #include <zephyr/kernel.h>
@@ -12,9 +13,6 @@
 #include <ctype.h>
 #include <math.h>
 #include <stdlib.h>
-
-/** @brief Max supported number of shell arguments. */
-#define SHELL_ARG_MAX_COUNT 3U
 
 /** @brief NTC thermistor configuration parameter. */
 typedef enum {
@@ -64,236 +62,7 @@ typedef enum {
 	TIMER_CONFIG_PARAM_PRESCALER, /* Configure timer prescaler mode. */
 } timer_config_param_t;
 
-/** @brief Supported shell argument types. */
-typedef enum {
-	SHELL_ARG_TYPE_INT32_VALUE, /* Shell int32_t type used for values. */
-	SHELL_ARG_TYPE_UINT32_VALUE, /* Shell uint32_t type used for values. */
-	SHELL_ARG_TYPE_BOOL_VALUE, /* Shell bool type used for values. */
-	SHELL_ARG_TYPE_UINT32_INDEX, /* Shell uint32_t type used for peripherals index. */
-} shell_arg_type_t;
-
-/** @brief Shell argument result value. */
-typedef union {
-	int32_t ivalue; /* int32_t result. */
-	uint32_t uvalue; /* uint32_t result. */
-	bool bvalue; /* bool result. */
-} shell_arg_result_t;
-
-/** @brief Shell argument structure. */
-typedef struct {
-	const shell_arg_type_t type; /* Shell argument type. */
-	const char *name; /* Shell argument name. */
-	shell_arg_result_t result; /* Shell argument result. */
-} shell_arg_t;
-
-/** @brief Shell arguments infomation structure. */
-typedef struct {
-	const int expected_args; /* Expected arguments count. */
-	shell_arg_t arg[SHELL_ARG_MAX_COUNT]; /* Shell arguments. */
-} args_info_t;
-
-/** @brief Supported unit types. */
-typedef enum {
-	UNIT_TYPE_MILLIAMPERE, /* Unit type mA. */
-	UNIT_TYPE_MILLIVOLT, /* Unit type mV. */
-	UNIT_TYPE_CELSIUS, /* Unit type *C. */
-	UNIT_TYPE_OHM, /* Unit type ohms. */
-	UNIT_TYPE_PCT, /* Unit type %. */
-	UNIT_TYPE_NONE, /* No unit type. */
-} unit_type_t;
-
 static const struct device *pmic_dev = DEVICE_DT_GET(DT_NODELABEL(npm_0));
-
-static bool check_error_code(const struct shell *shell, npmx_error_t err_code)
-{
-	switch (err_code) {
-	case NPMX_SUCCESS:
-		return true;
-	case NPMX_ERROR_INVALID_PARAM: {
-		shell_error(shell, "Error: invalid parameter for npmx function.");
-		return false;
-	}
-	case NPMX_ERROR_IO: {
-		shell_error(shell, "Error: IO error.");
-		return false;
-	}
-	case NPMX_ERROR_INVALID_MEAS:
-		shell_error(shell, "Error: invalid measurement.");
-		return false;
-	}
-
-	return false;
-}
-
-static const char *unit_str_get(unit_type_t unit_type)
-{
-	switch (unit_type) {
-	case UNIT_TYPE_MILLIAMPERE:
-		return " mA";
-	case UNIT_TYPE_MILLIVOLT:
-		return " mV";
-	case UNIT_TYPE_CELSIUS:
-		return "*C";
-	case UNIT_TYPE_OHM:
-		return " ohms";
-	case UNIT_TYPE_PCT:
-		return "%";
-	default:
-		return "";
-	}
-}
-
-static void print_value(const struct shell *shell, int value, unit_type_t unit_type)
-{
-	shell_print(shell, "Value: %d%s.", value, unit_str_get(unit_type));
-}
-
-static void print_success(const struct shell *shell, int value, unit_type_t unit_type)
-{
-	shell_print(shell, "Success: %d%s.", value, unit_str_get(unit_type));
-}
-
-static void print_hint_error(const struct shell *shell, int32_t index, const char *str)
-{
-	shell_error(shell, "%d-%s", index, str);
-}
-
-static void print_set_error(const struct shell *shell, const char *str)
-{
-	shell_error(shell, "Error: unable to set %s.", str);
-}
-
-static void print_get_error(const struct shell *shell, const char *str)
-{
-	shell_error(shell, "Error: unable to get %s.", str);
-}
-
-static void print_convert_error(const struct shell *shell, const char *src, const char *dst)
-{
-	shell_error(shell, "Error: unable to convert %s to %s.", src, dst);
-}
-
-static const char *message_ending_get(shell_arg_type_t arg_type)
-{
-	switch (arg_type) {
-	case SHELL_ARG_TYPE_INT32_VALUE:
-	case SHELL_ARG_TYPE_UINT32_VALUE:
-	case SHELL_ARG_TYPE_BOOL_VALUE:
-		return "value";
-	case SHELL_ARG_TYPE_UINT32_INDEX:
-		return "instance index";
-	}
-	return "";
-}
-
-static bool arguments_check(const struct shell *shell, size_t argc, char **argv,
-			    args_info_t *args_info)
-{
-	__ASSERT_NO_MSG(args_info);
-	__ASSERT_NO_MSG(args_info->expected_args <= SHELL_ARG_MAX_COUNT);
-
-	/* argc and argv have also an information about command name, here it should be skipped. */
-	argc--;
-	/* Only arguments passed to commands are used. Command name is skipped. */
-	argv++;
-
-	/* Check if all argument are passed. */
-	if (argc < args_info->expected_args) {
-		shell_arg_t *missing_args = &args_info->arg[argc];
-		int missing_count = args_info->expected_args - argc;
-		switch (missing_count) {
-		case 1:
-			shell_error(shell, "Error: missing %s %s.", missing_args[0].name,
-				    message_ending_get(missing_args[0].type));
-			break;
-		case 2:
-			shell_error(shell, "Error: missing %s %s and %s %s.", missing_args[0].name,
-				    message_ending_get(missing_args[0].type), missing_args[1].name,
-				    message_ending_get(missing_args[1].type));
-			break;
-		case 3:
-			shell_error(shell, "Error: missing %s %s, %s %s and %s %s.",
-				    missing_args[0].name, message_ending_get(missing_args[0].type),
-				    missing_args[1].name, message_ending_get(missing_args[1].type),
-				    missing_args[2].name, message_ending_get(missing_args[2].type));
-			break;
-		}
-		return false;
-	}
-
-	for (int i = 0; i < args_info->expected_args; i++) {
-		shell_arg_t *arg_info = &args_info->arg[i];
-		__ASSERT_NO_MSG(arg_info);
-
-		int err = 0;
-		switch (arg_info->type) {
-		case SHELL_ARG_TYPE_INT32_VALUE:
-			arg_info->result.ivalue = shell_strtol(argv[i], 0, &err);
-			if (err != 0) {
-				shell_error(shell, "Error: %s has to be an integer.",
-					    arg_info->name);
-				return false;
-			}
-			break;
-		case SHELL_ARG_TYPE_UINT32_VALUE:
-		case SHELL_ARG_TYPE_UINT32_INDEX:
-			arg_info->result.uvalue = shell_strtoul(argv[i], 0, &err);
-			if (err != 0) {
-				shell_error(shell, "Error: %s has to be a non-negative integer.",
-					    arg_info->name);
-				return false;
-			}
-			break;
-		case SHELL_ARG_TYPE_BOOL_VALUE:
-			const char *str = argv[i];
-			/* shell_strtobool can't be used due to accepting any big value as true. */
-			if ((strcmp(str, "on") == 0) || (strcmp(str, "enable") == 0) ||
-			    (strcmp(str, "true") == 0)) {
-				arg_info->result.bvalue = true;
-				break;
-			}
-			if ((strcmp(str, "off") == 0) || (strcmp(str, "disable") == 0) ||
-			    (strcmp(str, "false") == 0)) {
-				arg_info->result.bvalue = false;
-				break;
-			}
-
-			uint32_t bool_value = shell_strtoul(str, 0, &err);
-			if ((err != 0) || (bool_value > 1)) {
-				shell_error(shell, "Error: invalid %s value.", arg_info->name);
-				return false;
-			}
-
-			arg_info->result.bvalue = bool_value == 1;
-			break;
-		}
-	}
-
-	return true;
-}
-
-static npmx_instance_t *npmx_instance_get(const struct shell *shell)
-{
-	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
-	if (npmx_instance == NULL) {
-		shell_error(shell, "Error: shell is not initialized.");
-		return NULL;
-	}
-
-	return npmx_instance;
-}
-
-static bool check_instance_index(const struct shell *shell, const char *instance_name,
-				 uint32_t index, uint32_t max_index)
-{
-	if (index >= max_index) {
-		shell_error(shell, "Error: %s instance index is too high: no such instance.",
-			    instance_name);
-		return false;
-	}
-
-	return true;
-}
 
 static npmx_adc_t *adc_instance_get(const struct shell *shell)
 {
@@ -385,35 +154,6 @@ static npmx_vbusin_t *vbusin_instance_get(const struct shell *shell)
 	npmx_instance_t *npmx_instance = npmx_instance_get(shell);
 
 	return npmx_instance ? npmx_vbusin_get(npmx_instance, 0) : NULL;
-}
-
-static bool range_check(const struct shell *shell, int32_t value, int32_t min, int32_t max,
-			const char *name)
-{
-	if ((value >= min) && (value <= max)) {
-		return true;
-	}
-
-	shell_error(shell, "Error: %s value out of range.", name);
-	return false;
-}
-
-static bool check_pin_configuration_correctness(const struct shell *shell, int8_t gpio_idx)
-{
-	int8_t pmic_int_pin = (int8_t)npmx_driver_int_pin_get(pmic_dev);
-	int8_t pmic_pof_pin = (int8_t)npmx_driver_pof_pin_get(pmic_dev);
-
-	if ((pmic_int_pin != -1) && (pmic_int_pin == gpio_idx)) {
-		shell_error(shell, "Error: GPIO used as interrupt.");
-		return false;
-	}
-
-	if ((pmic_pof_pin != -1) && (pmic_pof_pin == gpio_idx)) {
-		shell_error(shell, "Error: GPIO used as POF.");
-		return false;
-	}
-
-	return true;
 }
 
 static int cmd_adc_meas_vbat_get(const struct shell *shell, size_t argc, char **argv)
@@ -4327,16 +4067,21 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	sub_vbusin, SHELL_CMD(current_limit, &sub_vbusin_current_limit, "Current limit", NULL),
 	SHELL_CMD(status, &sub_vbusin_status, "Status", NULL), SHELL_SUBCMD_SET_END);
 
+SHELL_SUBCMD_ADD((npmx), adc, &sub_adc, "ADC", NULL, 1, 0);
+SHELL_SUBCMD_ADD((npmx), buck, &sub_buck, "Buck", NULL, 1, 0);
+SHELL_SUBCMD_ADD((npmx), charger, &sub_charger, "Charger", NULL, 1, 0);
+SHELL_SUBCMD_ADD((npmx), errlog, &sub_errlog, "Reset errors logs", NULL, 1, 0);
+SHELL_SUBCMD_ADD((npmx), gpio, &sub_gpio, "GPIO", NULL, 1, 0);
+SHELL_SUBCMD_ADD((npmx), ldsw, &sub_ldsw, "LDSW", NULL, 1, 0);
+SHELL_SUBCMD_ADD((npmx), led, &sub_led, "LED", NULL, 1, 0);
+SHELL_SUBCMD_ADD((npmx), pof, &sub_pof, "POF", NULL, 1, 0);
+SHELL_SUBCMD_ADD((npmx), reset, NULL, "Reset device", cmd_reset, 1, 0);
+SHELL_SUBCMD_ADD((npmx), ship, &sub_ship, "SHIP", NULL, 1, 0);
+SHELL_SUBCMD_ADD((npmx), timer, &sub_timer, "Timer", NULL, 1, 0);
+SHELL_SUBCMD_ADD((npmx), vbusin, &sub_vbusin, "VBUSIN", NULL, 1, 0);
+
 /* Creating subcommands (level 1 command) array for command "npmx". */
-SHELL_STATIC_SUBCMD_SET_CREATE(
-	sub_npmx, SHELL_CMD(adc, &sub_adc, "ADC", NULL), SHELL_CMD(buck, &sub_buck, "Buck", NULL),
-	SHELL_CMD(charger, &sub_charger, "Charger", NULL),
-	SHELL_CMD(errlog, &sub_errlog, "Reset errors logs", NULL),
-	SHELL_CMD(gpio, &sub_gpio, "GPIO", NULL), SHELL_CMD(ldsw, &sub_ldsw, "LDSW", NULL),
-	SHELL_CMD(led, &sub_led, "LED", NULL), SHELL_CMD(pof, &sub_pof, "POF", NULL),
-	SHELL_CMD(reset, NULL, "Reset device", cmd_reset), SHELL_CMD(ship, &sub_ship, "SHIP", NULL),
-	SHELL_CMD(timer, &sub_timer, "Timer", NULL), SHELL_CMD(vbusin, &sub_vbusin, "VBUSIN", NULL),
-	SHELL_SUBCMD_SET_END);
+SHELL_SUBCMD_SET_CREATE(sub_npmx, (npmx));
 
 /* Creating root (level 0) command "npmx" without a handler. */
 SHELL_CMD_REGISTER(npmx, &sub_npmx, "npmx", NULL);
