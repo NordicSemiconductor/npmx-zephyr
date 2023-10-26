@@ -88,6 +88,9 @@ bool range_check(const struct shell *shell, int32_t value, int32_t min, int32_t 
 
 bool check_pin_configuration_correctness(const struct shell *shell, int8_t gpio_index);
 
+bool charger_disabled_check(const struct shell *shell, npmx_charger_t *charger_instance,
+			    const char *help);
+
 npmx_instance_t *npmx_instance_get(const struct shell *shell);
 
 bool check_instance_index(const struct shell *shell, const char *instance_name, uint32_t index,
