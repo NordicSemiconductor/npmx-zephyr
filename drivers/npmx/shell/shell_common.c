@@ -228,3 +228,21 @@ bool check_pin_configuration_correctness(const struct shell *shell, int8_t gpio_
 
 	return true;
 }
+
+bool charger_disabled_check(const struct shell *shell, npmx_charger_t *charger_instance,
+			    const char *help)
+{
+	uint32_t modules_mask;
+	npmx_error_t err_code = npmx_charger_module_get(charger_instance, &modules_mask);
+
+	if (!check_error_code(shell, err_code)) {
+		print_get_error(shell, "charger module status");
+		return false;
+	}
+
+	if ((modules_mask & NPMX_CHARGER_MODULE_CHARGER_MASK) != 0) {
+		shell_error(shell, "Error: charger must be disabled to set %s.", help);
+		return false;
+	}
+	return true;
+}
