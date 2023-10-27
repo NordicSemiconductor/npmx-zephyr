@@ -7,6 +7,12 @@
 #include "shell_common.h"
 #include <npmx_driver.h>
 
+/** @brief BUCK GPIO configuration parameter. */
+typedef enum {
+	BUCK_GPIO_PARAM_INDEX, /* Pin index. */
+	BUCK_GPIO_PARAM_POLARITY, /* Pin polarity. */
+} buck_gpio_param_t;
+
 static npmx_buck_t *buck_instance_get(const struct shell *shell, uint32_t index)
 {
 	npmx_instance_t *npmx_instance = npmx_instance_get(shell);
@@ -70,17 +76,33 @@ static int cmd_buck_active_discharge_get(const struct shell *shell, size_t argc,
 	return 0;
 }
 
-static int buck_gpio_set(const struct shell *shell, size_t argc, char **argv,
-			 npmx_error_t (*gpio_config_set)(npmx_buck_t const *,
-							 npmx_buck_gpio_config_t const *))
+static int
+buck_gpio_set(const struct shell *shell, size_t argc, char **argv,
+	      npmx_error_t (*gpio_config_set)(npmx_buck_t const *, npmx_buck_gpio_config_t const *),
+	      npmx_error_t (*gpio_config_get)(npmx_buck_t const *, npmx_buck_gpio_config_t *),
+	      buck_gpio_param_t config_type)
 {
-	args_info_t args_info = { .expected_args = 3,
+	char *config_name;
+	shell_arg_type_t arg_type = SHELL_ARG_TYPE_INT32_VALUE;
+
+	switch (config_type) {
+	case BUCK_GPIO_PARAM_INDEX:
+		config_name = "GPIO number";
+		break;
+	case BUCK_GPIO_PARAM_POLARITY:
+		arg_type = SHELL_ARG_TYPE_BOOL_VALUE;
+		config_name = "GPIO polarity";
+		break;
+	default:
+		return 0;
+	}
+
+	args_info_t args_info = { .expected_args = 2,
 				  .arg = {
 					  [0] = { SHELL_ARG_TYPE_UINT32_INDEX, "buck" },
-					  [1] = { SHELL_ARG_TYPE_INT32_VALUE, "GPIO number" },
-					  [2] = { SHELL_ARG_TYPE_BOOL_VALUE,
-						  "GPIO inversion status" },
+					  [1] = { arg_type, config_name },
 				  } };
+
 	if (!arguments_check(shell, argc, argv, &args_info)) {
 		return 0;
 	}
@@ -90,44 +112,58 @@ static int buck_gpio_set(const struct shell *shell, size_t argc, char **argv,
 		return 0;
 	}
 
-	int gpio_index = args_info.arg[1].result.ivalue;
-	npmx_buck_gpio_config_t gpio_config = {
-		.inverted = args_info.arg[2].result.bvalue,
-	};
-
-	static const npmx_buck_gpio_t gpios[] = {
-		NPMX_BUCK_GPIO_0, NPMX_BUCK_GPIO_1, NPMX_BUCK_GPIO_2,
-		NPMX_BUCK_GPIO_3, NPMX_BUCK_GPIO_4,
-	};
-
-	if (!check_pin_configuration_correctness(shell, gpio_index)) {
+	npmx_buck_gpio_config_t gpio_config;
+	npmx_error_t err_code = gpio_config_get(buck_instance, &gpio_config);
+	if (!check_error_code(shell, err_code)) {
+		print_get_error(shell, "GPIO config");
 		return 0;
 	}
 
-	if (gpio_index == -1) {
-		gpio_config.gpio = NPMX_BUCK_GPIO_NC;
-	} else {
-		if ((gpio_index >= 0) && (gpio_index < ARRAY_SIZE(gpios))) {
-			gpio_config.gpio = gpios[gpio_index];
+	switch (config_type) {
+	case BUCK_GPIO_PARAM_INDEX:
+		if (args_info.arg[1].result.ivalue == -1) {
+			gpio_config.gpio = NPMX_BUCK_GPIO_NC;
 		} else {
-			shell_error(shell, "Error: wrong GPIO index.");
+			static const npmx_buck_gpio_t gpios[] = {
+				NPMX_BUCK_GPIO_0, NPMX_BUCK_GPIO_1, NPMX_BUCK_GPIO_2,
+				NPMX_BUCK_GPIO_3, NPMX_BUCK_GPIO_4,
+			};
+			if ((args_info.arg[1].result.ivalue >= 0) &&
+			    (args_info.arg[1].result.ivalue < ARRAY_SIZE(gpios))) {
+				gpio_config.gpio = gpios[args_info.arg[1].result.ivalue];
+			} else {
+				shell_error(shell, "Error: wrong GPIO index.");
+				return 0;
+			}
+		}
+		if (!check_pin_configuration_correctness(shell, args_info.arg[1].result.ivalue)) {
 			return 0;
 		}
+		break;
+	case BUCK_GPIO_PARAM_POLARITY:
+		gpio_config.inverted = args_info.arg[1].result.bvalue;
+		break;
+	default:
+		return 0;
 	}
 
-	npmx_error_t err_code = gpio_config_set(buck_instance, &gpio_config);
+	err_code = gpio_config_set(buck_instance, &gpio_config);
 	if (!check_error_code(shell, err_code)) {
 		print_set_error(shell, "GPIO config");
 		return 0;
 	}
 
-	print_success(shell, gpio_index, UNIT_TYPE_NONE);
+	int16_t value = (config_type == BUCK_GPIO_PARAM_INDEX) ? args_info.arg[1].result.ivalue :
+								 gpio_config.inverted;
+
+	print_success(shell, value, UNIT_TYPE_NONE);
 	return 0;
 }
 
 static int buck_gpio_get(const struct shell *shell, size_t argc, char **argv,
 			 npmx_error_t (*gpio_config_get)(npmx_buck_t const *,
-							 npmx_buck_gpio_config_t *))
+							 npmx_buck_gpio_config_t *),
+			 buck_gpio_param_t config_type)
 {
 	args_info_t args_info = { .expected_args = 1,
 				  .arg = {
@@ -149,43 +185,94 @@ static int buck_gpio_get(const struct shell *shell, size_t argc, char **argv,
 		return 0;
 	}
 
-	int gpio_index = ((gpio_config.gpio == NPMX_BUCK_GPIO_NC) ||
-			  (gpio_config.gpio == NPMX_BUCK_GPIO_NC1)) ?
-				 -1 :
-				 ((int)gpio_config.gpio - 1);
+	switch (config_type) {
+	case BUCK_GPIO_PARAM_INDEX:
+		int8_t gpio_index = (gpio_config.gpio == NPMX_BUCK_GPIO_NC) ?
+					    -1 :
+					    ((int8_t)gpio_config.gpio - 1);
 
-	shell_print(shell, "Value: %d %d.", gpio_index, gpio_config.inverted);
+		print_value(shell, gpio_index, UNIT_TYPE_NONE);
+		break;
+	case BUCK_GPIO_PARAM_POLARITY:
+		print_value(shell, gpio_config.inverted, UNIT_TYPE_NONE);
+		break;
+	default:
+		return 0;
+	}
+
 	return 0;
 }
 
-static int cmd_buck_gpio_on_off_set(const struct shell *shell, size_t argc, char **argv)
+static int cmd_buck_gpio_on_off_index_set(const struct shell *shell, size_t argc, char **argv)
 {
-	return buck_gpio_set(shell, argc, argv, npmx_buck_enable_gpio_config_set);
+	return buck_gpio_set(shell, argc, argv, npmx_buck_enable_gpio_config_set,
+			     npmx_buck_enable_gpio_config_get, BUCK_GPIO_PARAM_INDEX);
 }
 
-static int cmd_buck_gpio_on_off_get(const struct shell *shell, size_t argc, char **argv)
+static int cmd_buck_gpio_on_off_index_get(const struct shell *shell, size_t argc, char **argv)
 {
-	return buck_gpio_get(shell, argc, argv, npmx_buck_enable_gpio_config_get);
+	return buck_gpio_get(shell, argc, argv, npmx_buck_enable_gpio_config_get,
+			     BUCK_GPIO_PARAM_INDEX);
 }
 
-static int cmd_buck_gpio_pwm_force_set(const struct shell *shell, size_t argc, char **argv)
+static int cmd_buck_gpio_on_off_polarity_set(const struct shell *shell, size_t argc, char **argv)
 {
-	return buck_gpio_set(shell, argc, argv, npmx_buck_forced_pwm_gpio_config_set);
+	return buck_gpio_set(shell, argc, argv, npmx_buck_enable_gpio_config_set,
+			     npmx_buck_enable_gpio_config_get, BUCK_GPIO_PARAM_POLARITY);
 }
 
-static int cmd_buck_gpio_pwm_force_get(const struct shell *shell, size_t argc, char **argv)
+static int cmd_buck_gpio_on_off_polarity_get(const struct shell *shell, size_t argc, char **argv)
 {
-	return buck_gpio_get(shell, argc, argv, npmx_buck_forced_pwm_gpio_config_get);
+	return buck_gpio_get(shell, argc, argv, npmx_buck_enable_gpio_config_get,
+			     BUCK_GPIO_PARAM_POLARITY);
 }
 
-static int cmd_buck_gpio_retention_set(const struct shell *shell, size_t argc, char **argv)
+static int cmd_buck_gpio_pwm_force_index_set(const struct shell *shell, size_t argc, char **argv)
 {
-	return buck_gpio_set(shell, argc, argv, npmx_buck_retention_gpio_config_set);
+	return buck_gpio_set(shell, argc, argv, npmx_buck_forced_pwm_gpio_config_set,
+			     npmx_buck_forced_pwm_gpio_config_get, BUCK_GPIO_PARAM_INDEX);
 }
 
-static int cmd_buck_gpio_retention_get(const struct shell *shell, size_t argc, char **argv)
+static int cmd_buck_gpio_pwm_force_index_get(const struct shell *shell, size_t argc, char **argv)
 {
-	return buck_gpio_get(shell, argc, argv, npmx_buck_retention_gpio_config_get);
+	return buck_gpio_get(shell, argc, argv, npmx_buck_forced_pwm_gpio_config_get,
+			     BUCK_GPIO_PARAM_INDEX);
+}
+
+static int cmd_buck_gpio_pwm_force_polarity_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return buck_gpio_set(shell, argc, argv, npmx_buck_forced_pwm_gpio_config_set,
+			     npmx_buck_forced_pwm_gpio_config_get, BUCK_GPIO_PARAM_POLARITY);
+}
+
+static int cmd_buck_gpio_pwm_force_polarity_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return buck_gpio_get(shell, argc, argv, npmx_buck_forced_pwm_gpio_config_get,
+			     BUCK_GPIO_PARAM_POLARITY);
+}
+
+static int cmd_buck_gpio_retention_index_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return buck_gpio_set(shell, argc, argv, npmx_buck_retention_gpio_config_set,
+			     npmx_buck_retention_gpio_config_get, BUCK_GPIO_PARAM_INDEX);
+}
+
+static int cmd_buck_gpio_retention_index_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return buck_gpio_get(shell, argc, argv, npmx_buck_retention_gpio_config_get,
+			     BUCK_GPIO_PARAM_INDEX);
+}
+
+static int cmd_buck_gpio_retention_polarity_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return buck_gpio_set(shell, argc, argv, npmx_buck_retention_gpio_config_set,
+			     npmx_buck_retention_gpio_config_get, BUCK_GPIO_PARAM_POLARITY);
+}
+
+static int cmd_buck_gpio_retention_polarity_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return buck_gpio_get(shell, argc, argv, npmx_buck_retention_gpio_config_get,
+			     BUCK_GPIO_PARAM_POLARITY);
 }
 
 static int cmd_buck_mode_set(const struct shell *shell, size_t argc, char **argv)
@@ -471,28 +558,76 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_active_discharge,
 					 cmd_buck_active_discharge_get),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating dictionary subcommands (level 5 command) array for command "buck gpio on_off index". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_gpio_on_off_index,
+			       SHELL_CMD(set, NULL, "Set buck on/off GPIO index",
+					 cmd_buck_gpio_on_off_index_set),
+			       SHELL_CMD(get, NULL, "Get buck on/off GPIO index",
+					 cmd_buck_gpio_on_off_index_get),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating dictionary subcommands (level 5 command) array for command "buck gpio on_off polarity". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_gpio_on_off_polarity,
+			       SHELL_CMD(set, NULL, "Set buck on/off GPIO polarity inversion",
+					 cmd_buck_gpio_on_off_polarity_set),
+			       SHELL_CMD(get, NULL, "Get buck on/off GPIO polarity inversion",
+					 cmd_buck_gpio_on_off_polarity_get),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating dictionary subcommands (level 4 command) array for command "buck gpio on_off". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_gpio_on_off,
-			       SHELL_CMD(set, NULL, "Set buck GPIO on/off",
-					 cmd_buck_gpio_on_off_set),
-			       SHELL_CMD(get, NULL, "Get buck GPIO on/off",
-					 cmd_buck_gpio_on_off_get),
+			       SHELL_CMD(index, &sub_buck_gpio_on_off_index,
+					 "Buck on/off GPIO index", NULL),
+			       SHELL_CMD(polarity, &sub_buck_gpio_on_off_polarity,
+					 "Buck on/off GPIO polarity", NULL),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating dictionary subcommands (level 5 command) array for command "buck gpio pwm_force index". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_gpio_pwm_force_index,
+			       SHELL_CMD(set, NULL, "Set buck PWM force GPIO index",
+					 cmd_buck_gpio_pwm_force_index_set),
+			       SHELL_CMD(get, NULL, "Get buck PWM force GPIO index",
+					 cmd_buck_gpio_pwm_force_index_get),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating dictionary subcommands (level 5 command) array for command "buck gpio pwm_force polarity". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_gpio_pwm_force_polarity,
+			       SHELL_CMD(set, NULL, "Set buck PWM force GPIO polarity inversion",
+					 cmd_buck_gpio_pwm_force_polarity_set),
+			       SHELL_CMD(get, NULL, "Get buck PWM force GPIO polarity inversion",
+					 cmd_buck_gpio_pwm_force_polarity_get),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating dictionary subcommands (level 4 command) array for command "buck gpio pwm_force". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_gpio_pwm_force,
-			       SHELL_CMD(set, NULL, "Set buck GPIO PWM force",
-					 cmd_buck_gpio_pwm_force_set),
-			       SHELL_CMD(get, NULL, "Get buck GPIO PWM force",
-					 cmd_buck_gpio_pwm_force_get),
+			       SHELL_CMD(index, &sub_buck_gpio_pwm_force_index,
+					 "Buck PWM force GPIO index", NULL),
+			       SHELL_CMD(polarity, &sub_buck_gpio_pwm_force_polarity,
+					 "Buck PWM force GPIO polarity", NULL),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating dictionary subcommands (level 5 command) array for command "buck gpio retention index". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_gpio_retention_index,
+			       SHELL_CMD(set, NULL, "Set buck retention GPIO index",
+					 cmd_buck_gpio_retention_index_set),
+			       SHELL_CMD(get, NULL, "Get buck retention GPIO index",
+					 cmd_buck_gpio_retention_index_get),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating dictionary subcommands (level 5 command) array for command "buck gpio retention polarity". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_gpio_retention_polarity,
+			       SHELL_CMD(set, NULL, "Set buck retention GPIO polarity inversion",
+					 cmd_buck_gpio_retention_polarity_set),
+			       SHELL_CMD(get, NULL, "Get buck retention GPIO polarity inversion",
+					 cmd_buck_gpio_retention_polarity_get),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating dictionary subcommands (level 4 command) array for command "buck gpio retention". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_buck_gpio_retention,
-			       SHELL_CMD(set, NULL, "Set buck GPIO retention",
-					 cmd_buck_gpio_retention_set),
-			       SHELL_CMD(get, NULL, "Get buck GPIO retention",
-					 cmd_buck_gpio_retention_get),
+			       SHELL_CMD(index, &sub_buck_gpio_retention_index,
+					 "Buck retention GPIO index", NULL),
+			       SHELL_CMD(polarity, &sub_buck_gpio_retention_polarity,
+					 "Buck retention GPIO polarity", NULL),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating dictionary subcommands (level 3 command) array for command "buck gpio". */
