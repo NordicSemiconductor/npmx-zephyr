@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Nordic Semiconductor ASA
+ * Copyright (c) 2022-2023 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -172,9 +172,6 @@ void main(void)
 
 	/* Set TIMER configuration. */
 	npmx_timer_config_set(timer_instance, &timer_config);
-
-	/* Save compare value data to internal TIMER's registers. */
-	npmx_timer_task_trigger(timer_instance, NPMX_TIMER_TASK_STROBE);
 
 	/* Enable TIMER to execute the interrupt. */
 	npmx_timer_task_trigger(timer_instance, NPMX_TIMER_TASK_ENABLE);
