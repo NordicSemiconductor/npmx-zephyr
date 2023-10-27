@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Nordic Semiconductor ASA
+ * Copyright (c) 2022-2023 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -161,9 +161,6 @@ void main(void)
 	/* Set LED to be controlled by the host and eventually turn it off. */
 	npmx_led_mode_set(npmx_led_get(npmx_inst, LED_IDX), NPMX_LED_MODE_HOST);
 	npmx_led_state_set(npmx_led_get(npmx_inst, LED_IDX), false);
-
-	/* Save the compare value data to internal timer's registers. */
-	npmx_timer_task_trigger(m_timer_inst, NPMX_TIMER_TASK_STROBE);
 
 	while (1) {
 		k_sleep(K_FOREVER);
