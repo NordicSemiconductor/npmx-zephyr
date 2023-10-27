@@ -7,6 +7,12 @@
 #include "shell_common.h"
 #include <npmx_driver.h>
 
+/** @brief Load switch GPIO configuration parameter. */
+typedef enum {
+	LDSW_GPIO_PARAM_INDEX, /* Pin index. */
+	LDSW_GPIO_PARAM_POLARITY, /* Pin polarity. */
+} ldsw_gpio_param_t;
+
 /** @brief Load switch soft-start configuration parameter. */
 typedef enum {
 	LDSW_SOFT_START_PARAM_ENABLE, /* Soft-start enable. */
@@ -97,15 +103,30 @@ static npmx_ldsw_gpio_t ldsw_gpio_index_convert(int32_t gpio_idx)
 	}
 }
 
-static int cmd_ldsw_gpio_set(const struct shell *shell, size_t argc, char **argv)
+static int ldsw_gpio_set(const struct shell *shell, size_t argc, char **argv,
+			 ldsw_gpio_param_t config_type)
 {
-	args_info_t args_info = { .expected_args = 3,
+	char *config_name;
+	shell_arg_type_t arg_type = SHELL_ARG_TYPE_INT32_VALUE;
+
+	switch (config_type) {
+	case LDSW_GPIO_PARAM_INDEX:
+		config_name = "GPIO number";
+		break;
+	case LDSW_GPIO_PARAM_POLARITY:
+		config_name = "GPIO polarity";
+		arg_type = SHELL_ARG_TYPE_BOOL_VALUE;
+		break;
+	default:
+		return 0;
+	}
+
+	args_info_t args_info = { .expected_args = 2,
 				  .arg = {
 					  [0] = { SHELL_ARG_TYPE_UINT32_INDEX, "LDSW" },
-					  [1] = { SHELL_ARG_TYPE_INT32_VALUE, "GPIO number" },
-					  [2] = { SHELL_ARG_TYPE_BOOL_VALUE,
-						  "GPIO inversion status" },
+					  [1] = { arg_type, config_name },
 				  } };
+
 	if (!arguments_check(shell, argc, argv, &args_info)) {
 		return 0;
 	}
@@ -115,32 +136,49 @@ static int cmd_ldsw_gpio_set(const struct shell *shell, size_t argc, char **argv
 		return 0;
 	}
 
-	int gpio_index = args_info.arg[1].result.ivalue;
-	npmx_ldsw_gpio_config_t gpio_config = {
-		.gpio = ldsw_gpio_index_convert(gpio_index),
-		.inverted = args_info.arg[2].result.bvalue,
-	};
-
-	if (gpio_config.gpio == NPMX_LDSW_GPIO_INVALID) {
-		shell_error(shell, "Error: wrong GPIO index.");
+	npmx_ldsw_gpio_config_t gpio_config;
+	npmx_error_t err_code = npmx_ldsw_enable_gpio_get(ldsw_instance, &gpio_config);
+	if (!check_error_code(shell, err_code)) {
+		print_get_error(shell, "GPIO config");
 		return 0;
 	}
 
-	if (!check_pin_configuration_correctness(shell, gpio_index)) {
+	switch (config_type) {
+	case LDSW_GPIO_PARAM_INDEX:
+		gpio_config.gpio = ldsw_gpio_index_convert(args_info.arg[1].result.ivalue);
+
+		if (gpio_config.gpio == NPMX_LDSW_GPIO_INVALID) {
+			shell_error(shell, "Error: wrong GPIO index.");
+			return 0;
+		}
+
+		if (!check_pin_configuration_correctness(shell, args_info.arg[1].result.ivalue)) {
+			return 0;
+		}
+
+		break;
+	case LDSW_GPIO_PARAM_POLARITY:
+		gpio_config.inverted = args_info.arg[1].result.bvalue;
+		break;
+	default:
 		return 0;
 	}
 
-	npmx_error_t err_code = npmx_ldsw_enable_gpio_set(ldsw_instance, &gpio_config);
+	err_code = npmx_ldsw_enable_gpio_set(ldsw_instance, &gpio_config);
 	if (!check_error_code(shell, err_code)) {
 		print_set_error(shell, "GPIO config");
 		return 0;
 	}
 
-	shell_print(shell, "Success: %d %d.", gpio_index, gpio_config.inverted);
+	int16_t value = (config_type == LDSW_GPIO_PARAM_INDEX) ? args_info.arg[1].result.ivalue :
+								 gpio_config.inverted;
+
+	print_success(shell, value, UNIT_TYPE_NONE);
 	return 0;
 }
 
-static int cmd_ldsw_gpio_get(const struct shell *shell, size_t argc, char **argv)
+static int ldsw_gpio_get(const struct shell *shell, size_t argc, char **argv,
+			 ldsw_gpio_param_t config_type)
 {
 	args_info_t args_info = { .expected_args = 1,
 				  .arg = {
@@ -162,13 +200,43 @@ static int cmd_ldsw_gpio_get(const struct shell *shell, size_t argc, char **argv
 		return 0;
 	}
 
-	int8_t gpio_index =
-		(gpio_config.gpio == NPMX_LDSW_GPIO_NC) ? -1 : ((int8_t)gpio_config.gpio - 1);
+	switch (config_type) {
+	case LDSW_GPIO_PARAM_INDEX:
+		int8_t gpio_index = (gpio_config.gpio == NPMX_LDSW_GPIO_NC) ?
+					    -1 :
+					    ((int8_t)gpio_config.gpio - 1);
 
-	shell_print(shell, "Value: %d %d.", gpio_index, gpio_config.inverted);
+		print_value(shell, gpio_index, UNIT_TYPE_NONE);
+		break;
+	case LDSW_GPIO_PARAM_POLARITY:
+		print_value(shell, gpio_config.inverted, UNIT_TYPE_NONE);
+		break;
+	default:
+		return 0;
+	}
+
 	return 0;
 }
 
+static int cmd_ldsw_gpio_index_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return ldsw_gpio_set(shell, argc, argv, LDSW_GPIO_PARAM_INDEX);
+}
+
+static int cmd_ldsw_gpio_index_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return ldsw_gpio_get(shell, argc, argv, LDSW_GPIO_PARAM_INDEX);
+}
+
+static int cmd_ldsw_gpio_polarity_set(const struct shell *shell, size_t argc, char **argv)
+{
+	return ldsw_gpio_set(shell, argc, argv, LDSW_GPIO_PARAM_POLARITY);
+}
+
+static int cmd_ldsw_gpio_polarity_get(const struct shell *shell, size_t argc, char **argv)
+{
+	return ldsw_gpio_get(shell, argc, argv, LDSW_GPIO_PARAM_POLARITY);
+}
 static int cmd_ldsw_ldo_voltage_set(const struct shell *shell, size_t argc, char **argv)
 {
 	args_info_t args_info = { .expected_args = 2,
@@ -508,10 +576,25 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_ldsw_active_discharge,
 					 cmd_ldsw_active_discharge_get),
 			       SHELL_SUBCMD_SET_END);
 
+/* Creating dictionary subcommands (level 4 command) array for command "ldsw gpio index". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ldsw_gpio_index,
+			       SHELL_CMD(set, NULL, "Set GPIO pin index", cmd_ldsw_gpio_index_set),
+			       SHELL_CMD(get, NULL, "Get GPIO pin index", cmd_ldsw_gpio_index_get),
+			       SHELL_SUBCMD_SET_END);
+
+/* Creating dictionary subcommands (level 4 command) array for command "ldsw gpio polarity". */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_ldsw_gpio_polarity,
+			       SHELL_CMD(set, NULL, "Set GPIO pin polarity inversion",
+					 cmd_ldsw_gpio_polarity_set),
+			       SHELL_CMD(get, NULL, "Get GPIO pin polarity inversion",
+					 cmd_ldsw_gpio_polarity_get),
+			       SHELL_SUBCMD_SET_END);
+
 /* Creating dictionary subcommands (level 3 command) array for command "ldsw gpio". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_ldsw_gpio,
-			       SHELL_CMD(set, NULL, "Set LDSW GPIO", cmd_ldsw_gpio_set),
-			       SHELL_CMD(get, NULL, "Get LDSW GPIO", cmd_ldsw_gpio_get),
+			       SHELL_CMD(index, &sub_ldsw_gpio_index, "LDSW GPIO pin index", NULL),
+			       SHELL_CMD(polarity, &sub_ldsw_gpio_polarity,
+					 "LDSW GPIO pin polarity", NULL),
 			       SHELL_SUBCMD_SET_END);
 
 /* Creating dictionary subcommands (level 3 command) array for command "ldsw ldo_voltage". */
