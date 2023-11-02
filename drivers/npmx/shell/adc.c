@@ -23,7 +23,53 @@ npmx_adc_t *adc_instance_get(const struct shell *shell)
 
 npmx_charger_t *charger_instance_get(const struct shell *shell);
 
-static int cmd_adc_meas_vbat_get(const struct shell *shell, size_t argc, char **argv)
+static int adc_meas_get(const struct shell *shell, npmx_adc_meas_t adc_meas,
+			npmx_adc_task_t adc_task)
+{
+	npmx_adc_t *adc_instance = adc_instance_get(shell);
+	if (adc_instance == NULL) {
+		return 0;
+	}
+
+	npmx_error_t err_code = npmx_adc_task_trigger(adc_instance, adc_task);
+	if (!check_error_code(shell, err_code)) {
+		shell_error(shell, "Error: unable to trigger the measurement.");
+		return 0;
+	}
+
+	int32_t value;
+	bool meas_get = false;
+	while (!meas_get) {
+		err_code = npmx_adc_meas_check(adc_instance, adc_meas, &meas_get);
+		if (!check_error_code(shell, err_code)) {
+			print_get_error(shell, "measurement status");
+			return 0;
+		}
+	}
+
+	err_code = npmx_adc_meas_get(adc_instance, adc_meas, &value);
+	if (!check_error_code(shell, err_code)) {
+		print_get_error(shell, "measurement");
+		return 0;
+	}
+
+	unit_type_t unit_type;
+	switch (adc_meas) {
+	case NPMX_ADC_MEAS_VBAT:
+		unit_type = UNIT_TYPE_MILLIVOLT;
+		break;
+	case NPMX_ADC_MEAS_VBAT2_IBAT:
+		unit_type = UNIT_TYPE_MILLIAMPERE;
+		break;
+	default:
+		return 0;
+	}
+
+	print_value(shell, value, unit_type);
+	return 0;
+}
+
+static int cmd_adc_meas_ibat_get(const struct shell *shell, size_t argc, char **argv)
 {
 	ARG_UNUSED(argc);
 	ARG_UNUSED(argv);
@@ -33,30 +79,32 @@ static int cmd_adc_meas_vbat_get(const struct shell *shell, size_t argc, char **
 		return 0;
 	}
 
-	npmx_error_t err_code = npmx_adc_task_trigger(adc_instance, NPMX_ADC_TASK_SINGLE_SHOT_VBAT);
+	bool enabled;
+	npmx_error_t err_code = npmx_adc_ibat_meas_enable_check(adc_instance, &enabled);
 	if (!check_error_code(shell, err_code)) {
-		shell_error(shell, "Error: unable to trigger the measurement.");
+		print_get_error(shell, "charging current enable");
 		return 0;
 	}
 
-	int32_t voltage_mv;
-	bool meas_get = false;
-	while (!meas_get) {
-		err_code = npmx_adc_meas_check(adc_instance, NPMX_ADC_MEAS_VBAT, &meas_get);
+	if (!enabled) {
+		/* Enable auto measurement of the battery current after
+		 * the battery voltage measurement. */
+		err_code = npmx_adc_ibat_meas_enable_set(adc_instance, true);
 		if (!check_error_code(shell, err_code)) {
-			print_get_error(shell, "measurement status");
+			print_set_error(shell, "charging current enable");
 			return 0;
 		}
 	}
 
-	err_code = npmx_adc_meas_get(adc_instance, NPMX_ADC_MEAS_VBAT, &voltage_mv);
-	if (!check_error_code(shell, err_code)) {
-		print_get_error(shell, "measurement");
-		return 0;
-	}
+	return adc_meas_get(shell, NPMX_ADC_MEAS_VBAT2_IBAT, NPMX_ADC_TASK_SINGLE_SHOT_VBAT);
+}
 
-	print_value(shell, voltage_mv, UNIT_TYPE_MILLIVOLT);
-	return 0;
+static int cmd_adc_meas_vbat_get(const struct shell *shell, size_t argc, char **argv)
+{
+	ARG_UNUSED(argc);
+	ARG_UNUSED(argv);
+
+	return adc_meas_get(shell, NPMX_ADC_MEAS_VBAT, NPMX_ADC_TASK_SINGLE_SHOT_VBAT);
 }
 
 static int adc_ntc_set(const struct shell *shell, size_t argc, char **argv,
@@ -305,6 +353,7 @@ static int cmd_adc_ntc_type_get(const struct shell *shell, size_t argc, char **a
 
 /* Creating subcommands (level 3 command) array for command "adc meas". */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_adc_meas,
+			       SHELL_CMD(ibat, NULL, "Get battery current", cmd_adc_meas_ibat_get),
 			       SHELL_CMD(vbat, NULL, "Get battery voltage", cmd_adc_meas_vbat_get),
 			       SHELL_SUBCMD_SET_END);
 
