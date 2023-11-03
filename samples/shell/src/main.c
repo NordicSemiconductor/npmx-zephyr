@@ -34,9 +34,6 @@ void main(void)
 
 	npmx_instance_t *npmx_instance = npmx_driver_instance_get(pmic_dev);
 
-	npmx_ldsw_active_discharge_enable_set(npmx_ldsw_get(npmx_instance, 0), true);
-	npmx_ldsw_active_discharge_enable_set(npmx_ldsw_get(npmx_instance, 1), true);
-
 	npmx_pof_t *pof_instance = npmx_pof_get(npmx_instance, 0);
 
 	npmx_pof_config_t pof_config;
