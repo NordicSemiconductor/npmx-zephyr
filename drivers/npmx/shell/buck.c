@@ -76,6 +76,26 @@ static int cmd_buck_active_discharge_get(const struct shell *shell, size_t argc,
 	return 0;
 }
 
+static npmx_buck_gpio_t buck_gpio_index_convert(int32_t gpio_index)
+{
+	switch (gpio_index) {
+	case (-1):
+		return NPMX_BUCK_GPIO_NC;
+	case (0):
+		return NPMX_BUCK_GPIO_0;
+	case (1):
+		return NPMX_BUCK_GPIO_1;
+	case (2):
+		return NPMX_BUCK_GPIO_2;
+	case (3):
+		return NPMX_BUCK_GPIO_3;
+	case (4):
+		return NPMX_BUCK_GPIO_4;
+	default:
+		return NPMX_BUCK_GPIO_INVALID;
+	}
+}
+
 static int
 buck_gpio_set(const struct shell *shell, size_t argc, char **argv,
 	      npmx_error_t (*gpio_config_set)(npmx_buck_t const *, npmx_buck_gpio_config_t const *),
@@ -121,22 +141,13 @@ buck_gpio_set(const struct shell *shell, size_t argc, char **argv,
 
 	switch (config_type) {
 	case BUCK_GPIO_PARAM_INDEX:
-		if (args_info.arg[1].result.ivalue == -1) {
-			gpio_config.gpio = NPMX_BUCK_GPIO_NC;
-		} else {
-			static const npmx_buck_gpio_t gpios[] = {
-				NPMX_BUCK_GPIO_0, NPMX_BUCK_GPIO_1, NPMX_BUCK_GPIO_2,
-				NPMX_BUCK_GPIO_3, NPMX_BUCK_GPIO_4,
-			};
-			if ((args_info.arg[1].result.ivalue >= 0) &&
-			    (args_info.arg[1].result.ivalue < ARRAY_SIZE(gpios))) {
-				gpio_config.gpio = gpios[args_info.arg[1].result.ivalue];
-			} else {
-				shell_error(shell, "Error: wrong GPIO index.");
-				return 0;
-			}
-		}
 		if (!check_pin_configuration_correctness(shell, args_info.arg[1].result.ivalue)) {
+			return 0;
+		}
+		gpio_config.gpio = buck_gpio_index_convert(args_info.arg[1].result.ivalue);
+
+		if (gpio_config.gpio == NPMX_BUCK_GPIO_INVALID) {
+			shell_error(shell, "Error: wrong GPIO index.");
 			return 0;
 		}
 		break;
