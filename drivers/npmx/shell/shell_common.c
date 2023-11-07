@@ -246,3 +246,21 @@ bool charger_disabled_check(const struct shell *shell, npmx_charger_t *charger_i
 	}
 	return true;
 }
+
+void value_difference_info(const struct shell *shell, shell_arg_type_t arg_type, uint32_t value_set,
+			   uint32_t value_get)
+{
+	if (value_set != value_get) {
+		if (arg_type == SHELL_ARG_TYPE_INT32_VALUE) {
+			shell_info(
+				shell,
+				"Info: Requested value was %i but reading will return %i due to approximations.",
+				(int32_t)value_set, (int32_t)value_get);
+		} else {
+			shell_info(
+				shell,
+				"Info: Requested value was %u but reading will return %u due to approximations.",
+				(uint32_t)value_set, (uint32_t)value_get);
+		}
+	}
+}

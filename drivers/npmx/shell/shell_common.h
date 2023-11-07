@@ -96,4 +96,7 @@ npmx_instance_t *npmx_instance_get(const struct shell *shell);
 bool check_instance_index(const struct shell *shell, const char *instance_name, uint32_t index,
 			  uint32_t max_index);
 
+void value_difference_info(const struct shell *shell, shell_arg_type_t arg_type, uint32_t value_set,
+			   uint32_t value_get);
+
 #endif /* ZEPHYR_DRIVERS_SHELL_COMMON_H__ */
