@@ -86,7 +86,7 @@ bool arguments_check(const struct shell *shell, size_t argc, char **argv, args_i
 bool range_check(const struct shell *shell, int32_t value, int32_t min, int32_t max,
 		 const char *name);
 
-bool check_pin_configuration_correctness(const struct shell *shell, int8_t gpio_index);
+bool check_pin_configuration_correctness(const struct shell *shell, int32_t gpio_index);
 
 bool charger_disabled_check(const struct shell *shell, npmx_charger_t *charger_instance,
 			    const char *help);
