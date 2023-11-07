@@ -31,7 +31,7 @@ static int cmd_buck_active_discharge_set(const struct shell *shell, size_t argc,
 		return 0;
 	}
 
-	bool active_discharge = args_info.arg[0].result.bvalue;
+	bool active_discharge = args_info.arg[1].result.bvalue;
 	npmx_error_t err_code =
 		npmx_buck_active_discharge_enable_set(buck_instance, active_discharge);
 	if (!check_error_code(shell, err_code)) {
