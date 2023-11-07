@@ -32,12 +32,9 @@ static bool charger_charging_current_set_helper(const struct shell *shell,
 		return false;
 	}
 
-	if (current != *p_charging_current) {
-		shell_info(
-			shell,
-			"Info: Requested value was %u but reading will return %u due to approximations.",
-			current, *p_charging_current.);
-	}
+	value_difference_info(shell, SHELL_ARG_TYPE_UINT32_VALUE, (uint32_t)current,
+			      (uint32_t)*p_charging_current);
+
 	return true;
 }
 
@@ -116,9 +113,8 @@ static bool charger_die_temp_set_helper(const struct shell *shell, npmx_charger_
 		return false;
 	}
 
-	if (temperature != *p_temperature) {
-		shell_info(shell, "Info: Set value may be different than requested.");
-	}
+	value_difference_info(shell, SHELL_ARG_TYPE_INT32_VALUE, (int32_t)temperature,
+			      (int32_t)*p_temperature);
 	return true;
 }
 
@@ -246,9 +242,9 @@ static bool charger_discharging_current_set_helper(const struct shell *shell,
 		return false;
 	}
 
-	if (current != *p_current) {
-		shell_info(shell, "Info: Set value may be different than requested.");
-	}
+	value_difference_info(shell, SHELL_ARG_TYPE_UINT32_VALUE, (uint32_t)current,
+			      (uint32_t)*p_current);
+
 	return true;
 }
 
@@ -429,9 +425,8 @@ static bool charger_ntc_resistance_set_helper(
 		return false;
 	}
 
-	if (resistance != *p_resistance) {
-		shell_info(shell, "Info: Set value may be different than requested.");
-	}
+	value_difference_info(shell, SHELL_ARG_TYPE_UINT32_VALUE, resistance, *p_resistance);
+
 	return true;
 }
 
