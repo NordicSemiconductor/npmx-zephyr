@@ -16,6 +16,31 @@ npmx_charger_t *charger_instance_get(const struct shell *shell)
 	return npmx_instance ? npmx_charger_get(npmx_instance, 0) : NULL;
 }
 
+static bool charger_charging_current_set_helper(const struct shell *shell,
+						npmx_charger_t *charger_instance, uint16_t current,
+						uint16_t *p_charging_current)
+{
+	npmx_error_t err_code = npmx_charger_charging_current_set(charger_instance, current);
+	if (!check_error_code(shell, err_code)) {
+		print_set_error(shell, "charging current");
+		return false;
+	}
+
+	err_code = npmx_charger_charging_current_get(charger_instance, p_charging_current);
+	if (!check_error_code(shell, err_code)) {
+		print_get_error(shell, "charging current");
+		return false;
+	}
+
+	if (current != *p_charging_current) {
+		shell_info(
+			shell,
+			"Info: Requested value was %u but reading will return %u due to approximations.",
+			current, *p_charging_current.);
+	}
+	return true;
+}
+
 static int cmd_charger_charging_current_set(const struct shell *shell, size_t argc, char **argv)
 {
 	args_info_t args_info = { .expected_args = 1,
@@ -42,14 +67,11 @@ static int cmd_charger_charging_current_set(const struct shell *shell, size_t ar
 	}
 
 	uint16_t charging_current_ma = (uint16_t)args_info.arg[0].result.uvalue;
-	npmx_error_t err_code =
-		npmx_charger_charging_current_set(charger_instance, charging_current_ma);
-	if (!check_error_code(shell, err_code)) {
-		print_set_error(shell, "charging current");
-		return 0;
+	uint16_t current_actual;
+	if (charger_charging_current_set_helper(shell, charger_instance, charging_current_ma,
+						&current_actual)) {
+		print_success(shell, current_actual, UNIT_TYPE_MILLIAMPERE);
 	}
-
-	print_success(shell, charging_current_ma, UNIT_TYPE_MILLIAMPERE);
 	return 0;
 }
 
@@ -75,9 +97,36 @@ static int cmd_charger_charging_current_get(const struct shell *shell, size_t ar
 	return 0;
 }
 
+static bool charger_die_temp_set_helper(const struct shell *shell, npmx_charger_t *charger_instance,
+					int16_t temperature, int16_t *p_temperature,
+					npmx_error_t (*func_set)(npmx_charger_t const *p_instance,
+								 int16_t temperature),
+					npmx_error_t (*func_get)(npmx_charger_t const *p_instance,
+								 int16_t *p_temperature))
+{
+	npmx_error_t err_code = func_set(charger_instance, temperature);
+	if (!check_error_code(shell, err_code)) {
+		print_set_error(shell, "die temperature threshold");
+		return false;
+	}
+
+	err_code = func_get(charger_instance, p_temperature);
+	if (!check_error_code(shell, err_code)) {
+		print_get_error(shell, "die temperature threshold");
+		return false;
+	}
+
+	if (temperature != *p_temperature) {
+		shell_info(shell, "Info: Set value may be different than requested.");
+	}
+	return true;
+}
+
 static int charger_die_temp_set(const struct shell *shell, size_t argc, char **argv,
-				npmx_error_t (*func)(npmx_charger_t const *p_instance,
-						     int16_t temperature))
+				npmx_error_t (*func_set)(npmx_charger_t const *p_instance,
+							 int16_t temperature),
+				npmx_error_t (*func_get)(npmx_charger_t const *p_instance,
+							 int16_t *p_temperature))
 {
 	args_info_t args_info = { .expected_args = 1,
 				  .arg = {
@@ -104,13 +153,11 @@ static int charger_die_temp_set(const struct shell *shell, size_t argc, char **a
 	}
 
 	int16_t temperature = (int16_t)args_info.arg[0].result.ivalue;
-	npmx_error_t err_code = func(charger_instance, temperature);
-	if (!check_error_code(shell, err_code)) {
-		print_set_error(shell, "die temperature threshold");
-		return 0;
+	int16_t temperature_actual;
+	if (charger_die_temp_set_helper(shell, charger_instance, temperature, &temperature_actual,
+					func_set, func_get)) {
+		print_success(shell, temperature_actual, UNIT_TYPE_CELSIUS);
 	}
-
-	print_success(shell, temperature, UNIT_TYPE_CELSIUS);
 	return 0;
 }
 
@@ -136,7 +183,8 @@ static int charger_die_temp_get(const struct shell *shell,
 
 static int cmd_charger_die_temp_resume_set(const struct shell *shell, size_t argc, char **argv)
 {
-	return charger_die_temp_set(shell, argc, argv, npmx_charger_die_temp_resume_set);
+	return charger_die_temp_set(shell, argc, argv, npmx_charger_die_temp_resume_set,
+				    npmx_charger_die_temp_resume_get);
 }
 
 static int cmd_charger_die_temp_resume_get(const struct shell *shell, size_t argc, char **argv)
@@ -170,7 +218,8 @@ static int cmd_charger_die_temp_status_get(const struct shell *shell, size_t arg
 
 static int cmd_charger_die_temp_stop_set(const struct shell *shell, size_t argc, char **argv)
 {
-	return charger_die_temp_set(shell, argc, argv, npmx_charger_die_temp_stop_set);
+	return charger_die_temp_set(shell, argc, argv, npmx_charger_die_temp_stop_set,
+				    npmx_charger_die_temp_stop_get);
 }
 
 static int cmd_charger_die_temp_stop_get(const struct shell *shell, size_t argc, char **argv)
@@ -179,6 +228,28 @@ static int cmd_charger_die_temp_stop_get(const struct shell *shell, size_t argc,
 	ARG_UNUSED(argv);
 
 	return charger_die_temp_get(shell, npmx_charger_die_temp_stop_get);
+}
+
+static bool charger_discharging_current_set_helper(const struct shell *shell,
+						   npmx_charger_t *charger_instance,
+						   uint16_t current, uint16_t *p_current)
+{
+	npmx_error_t err_code = npmx_charger_discharging_current_set(charger_instance, current);
+	if (!check_error_code(shell, err_code)) {
+		print_set_error(shell, "discharging current");
+		return false;
+	}
+
+	err_code = npmx_charger_discharging_current_get(charger_instance, p_current);
+	if (!check_error_code(shell, err_code)) {
+		print_get_error(shell, "discharging current");
+		return false;
+	}
+
+	if (current != *p_current) {
+		shell_info(shell, "Info: Set value may be different than requested.");
+	}
+	return true;
 }
 
 static int cmd_charger_discharging_current_set(const struct shell *shell, size_t argc, char **argv)
@@ -208,21 +279,11 @@ static int cmd_charger_discharging_current_set(const struct shell *shell, size_t
 	}
 
 	uint16_t discharging_current_ma = args_info.arg[0].result.uvalue;
-	npmx_error_t err_code =
-		npmx_charger_discharging_current_set(charger_instance, discharging_current_ma);
-	if (!check_error_code(shell, err_code)) {
-		print_set_error(shell, "discharging current");
-		return 0;
+	uint16_t current_actual;
+	if (charger_discharging_current_set_helper(shell, charger_instance, discharging_current_ma,
+						   &current_actual)) {
+		print_success(shell, current_actual, UNIT_TYPE_MILLIAMPERE);
 	}
-
-	err_code = npmx_charger_discharging_current_get(charger_instance, &discharging_current_ma);
-	if (!check_error_code(shell, err_code)) {
-		print_get_error(shell, "discharging current");
-		return 0;
-	}
-
-	print_success(shell, discharging_current_ma, UNIT_TYPE_MILLIAMPERE);
-	shell_print(shell, "Set value may be different than requested.");
 	return 0;
 }
 
@@ -350,9 +411,35 @@ static int cmd_charger_module_recharge_get(const struct shell *shell, size_t arg
 	return charger_module_get(shell, NPMX_CHARGER_MODULE_RECHARGE_MASK);
 }
 
+static bool charger_ntc_resistance_set_helper(
+	const struct shell *shell, npmx_charger_t const *p_instance, uint32_t resistance,
+	uint32_t *p_resistance,
+	npmx_error_t (*func_set)(npmx_charger_t const *p_instance, uint32_t resistance),
+	npmx_error_t (*func_get)(npmx_charger_t const *p_instance, uint32_t *p_resistance))
+{
+	npmx_error_t err_code = func_set(p_instance, resistance);
+	if (!check_error_code(shell, err_code)) {
+		print_set_error(shell, "NTC resistance");
+		return false;
+	}
+
+	err_code = func_get(p_instance, p_resistance);
+	if (!check_error_code(shell, err_code)) {
+		print_get_error(shell, "NTC resistance");
+		return false;
+	}
+
+	if (resistance != *p_resistance) {
+		shell_info(shell, "Info: Set value may be different than requested.");
+	}
+	return true;
+}
+
 static int charger_ntc_resistance_set(const struct shell *shell, size_t argc, char **argv,
-				      npmx_error_t (*func)(npmx_charger_t const *p_instance,
-							   uint32_t p_resistance))
+				      npmx_error_t (*func_set)(npmx_charger_t const *p_instance,
+							       uint32_t resistance),
+				      npmx_error_t (*func_get)(npmx_charger_t const *p_instance,
+							       uint32_t *p_resistance))
 {
 	args_info_t args_info = { .expected_args = 1,
 				  .arg = {
@@ -372,19 +459,17 @@ static int charger_ntc_resistance_set(const struct shell *shell, size_t argc, ch
 	}
 
 	uint32_t resistance = args_info.arg[0].result.uvalue;
-	npmx_error_t err_code = func(charger_instance, resistance);
-	if (!check_error_code(shell, err_code)) {
-		print_set_error(shell, "NTC resistance");
-		return 0;
+	uint32_t resistance_actual;
+	if (charger_ntc_resistance_set_helper(shell, charger_instance, resistance,
+					      &resistance_actual, func_set, func_get)) {
+		print_success(shell, resistance_actual, UNIT_TYPE_OHM);
 	}
-
-	print_success(shell, resistance, UNIT_TYPE_OHM);
 	return 0;
 }
 
 static int charger_ntc_resistance_get(const struct shell *shell,
 				      npmx_error_t (*func)(npmx_charger_t const *p_instance,
-							   uint32_t *resistance))
+							   uint32_t *p_resistance))
 {
 	npmx_charger_t *charger_instance = charger_instance_get(shell);
 	if (charger_instance == NULL) {
@@ -404,7 +489,8 @@ static int charger_ntc_resistance_get(const struct shell *shell,
 
 static int cmd_charger_ntc_resistance_cold_set(const struct shell *shell, size_t argc, char **argv)
 {
-	return charger_ntc_resistance_set(shell, argc, argv, npmx_charger_cold_resistance_set);
+	return charger_ntc_resistance_set(shell, argc, argv, npmx_charger_cold_resistance_set,
+					  npmx_charger_cold_resistance_get);
 }
 
 static int cmd_charger_ntc_resistance_cold_get(const struct shell *shell, size_t argc, char **argv)
@@ -417,7 +503,8 @@ static int cmd_charger_ntc_resistance_cold_get(const struct shell *shell, size_t
 
 static int cmd_charger_ntc_resistance_cool_set(const struct shell *shell, size_t argc, char **argv)
 {
-	return charger_ntc_resistance_set(shell, argc, argv, npmx_charger_cool_resistance_set);
+	return charger_ntc_resistance_set(shell, argc, argv, npmx_charger_cool_resistance_set,
+					  npmx_charger_cool_resistance_get);
 }
 
 static int cmd_charger_ntc_resistance_cool_get(const struct shell *shell, size_t argc, char **argv)
@@ -430,7 +517,8 @@ static int cmd_charger_ntc_resistance_cool_get(const struct shell *shell, size_t
 
 static int cmd_charger_ntc_resistance_warm_set(const struct shell *shell, size_t argc, char **argv)
 {
-	return charger_ntc_resistance_set(shell, argc, argv, npmx_charger_warm_resistance_set);
+	return charger_ntc_resistance_set(shell, argc, argv, npmx_charger_warm_resistance_set,
+					  npmx_charger_warm_resistance_get);
 }
 
 static int cmd_charger_ntc_resistance_warm_get(const struct shell *shell, size_t argc, char **argv)
@@ -443,7 +531,8 @@ static int cmd_charger_ntc_resistance_warm_get(const struct shell *shell, size_t
 
 static int cmd_charger_ntc_resistance_hot_set(const struct shell *shell, size_t argc, char **argv)
 {
-	return charger_ntc_resistance_set(shell, argc, argv, npmx_charger_hot_resistance_set);
+	return charger_ntc_resistance_set(shell, argc, argv, npmx_charger_hot_resistance_set,
+					  npmx_charger_hot_resistance_get);
 }
 
 static int cmd_charger_ntc_resistance_hot_get(const struct shell *shell, size_t argc, char **argv)
