@@ -211,10 +211,10 @@ bool range_check(const struct shell *shell, int32_t value, int32_t min, int32_t 
 	return false;
 }
 
-bool check_pin_configuration_correctness(const struct shell *shell, int8_t gpio_idx)
+bool check_pin_configuration_correctness(const struct shell *shell, int32_t gpio_idx)
 {
-	int8_t pmic_int_pin = (int8_t)npmx_driver_int_pin_get(pmic_dev);
-	int8_t pmic_pof_pin = (int8_t)npmx_driver_pof_pin_get(pmic_dev);
+	int32_t pmic_int_pin = npmx_driver_int_pin_get(pmic_dev);
+	int32_t pmic_pof_pin = npmx_driver_pof_pin_get(pmic_dev);
 
 	if ((pmic_int_pin != -1) && (pmic_int_pin == gpio_idx)) {
 		shell_error(shell, "Error: GPIO used as interrupt.");
