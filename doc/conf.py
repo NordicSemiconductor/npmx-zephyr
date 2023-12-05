@@ -42,7 +42,7 @@ root_doc = 'index'
 project = 'npmx-zephyr'
 copyright = '2023, Nordic Semiconductor'
 author = 'Nordic Semiconductor'
-version = release = "0.7.0"
+version = release = "1.0.0"
 
 sys.path.insert(0, str(NPMX_ZEPHYR_BASE / "doc" / "_extensions"))
 
