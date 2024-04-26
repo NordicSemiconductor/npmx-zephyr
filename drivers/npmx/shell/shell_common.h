@@ -12,20 +12,6 @@
 #include <npmx_charger.h>
 #include <zephyr/shell/shell.h>
 
-/* Due to the bug in zephyr/shell/shell.h, it is required to override macro implementation. */
-/* It should be removed after the next Zephyr release with the fix. */
-/* https://github.com/zephyrproject-rtos/zephyr/pull/64455 */
-#undef SHELL_SUBCMD_ADD
-
-// clang-format off
-#define SHELL_SUBCMD_ADD(_parent, _syntax, _subcmd, _help, _handler, _mand, _opt)                  \
-	static const struct shell_static_entry Z_SHELL_SUBCMD_NAME(__DEBRACKET _parent, _syntax)   \
-		__attribute__((section("." STRINGIFY(Z_SHELL_SUBCMD_NAME(                          \
-			NUM_VA_ARGS_LESS_1 _parent, __DEBRACKET _parent, _syntax)))))              \
-		__attribute__((used)) =                                                            \
-			SHELL_EXPR_CMD_ARG(1, _syntax, _subcmd, _help, _handler, _mand, _opt)
-// clang-format on
-
 /** @brief Max supported number of shell arguments. */
 #define SHELL_ARG_MAX_COUNT 3U
 
