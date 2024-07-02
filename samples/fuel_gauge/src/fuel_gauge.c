@@ -22,7 +22,8 @@ static float max_charge_current;
 static float term_charge_current;
 static int64_t ref_time;
 
-static int read_sensors(npmx_instance_t *const p_pm, float *voltage, float *current, float *temp)
+static int read_sensors(npmx_instance_t *const p_pm, float *voltage, float *current, float *temp,
+			bool *cc_charging)
 {
 	npmx_adc_t *adc_instance = npmx_adc_get(p_pm, 0);
 	npmx_adc_meas_all_t meas;
@@ -51,15 +52,30 @@ static int read_sensors(npmx_instance_t *const p_pm, float *voltage, float *curr
 	/* Convert voltage in millivolts to voltage in volts. */
 	*voltage = (float)meas.values[NPMX_ADC_MEAS_VBAT] / 1000.0f;
 
+	/* Get charger status */
+	npmx_charger_t *charger_instance = npmx_charger_get(p_pm, 0);
+	uint8_t chg_status;
+
+	if (npmx_charger_status_get(charger_instance, &chg_status) != NPMX_SUCCESS) {
+		LOG_ERR("Reading charger status failed.");
+		return -EIO;
+	}
+
+	*cc_charging = (chg_status & NPMX_CHARGER_STATUS_CONSTANT_CURRENT_MASK) != 0U;
+
 	return 0;
 }
 
 int fuel_gauge_init(npmx_instance_t *const p_pm)
 {
-	struct nrf_fuel_gauge_init_parameters parameters = { .model = &battery_model };
+	struct nrf_fuel_gauge_init_parameters parameters = {
+		.model = &battery_model,
+		.opt_params = NULL,
+	};
+	bool cc_charging;
 	int ret;
 
-	ret = read_sensors(p_pm, &parameters.v0, &parameters.i0, &parameters.t0);
+	ret = read_sensors(p_pm, &parameters.v0, &parameters.i0, &parameters.t0, &cc_charging);
 	if (ret < 0) {
 		return ret;
 	}
@@ -84,9 +100,10 @@ int fuel_gauge_update(npmx_instance_t *const p_pm)
 	float tte;
 	float ttf;
 	float delta;
+	bool cc_charging;
 	int ret;
 
-	ret = read_sensors(p_pm, &voltage, &current, &temp);
+	ret = read_sensors(p_pm, &voltage, &current, &temp, &cc_charging);
 	if (ret < 0) {
 		LOG_ERR("Error: Could not read data from charger device.");
 		return ret;
@@ -96,7 +113,7 @@ int fuel_gauge_update(npmx_instance_t *const p_pm)
 
 	soc = nrf_fuel_gauge_process(voltage, current, temp, delta, NULL);
 	tte = nrf_fuel_gauge_tte_get();
-	ttf = nrf_fuel_gauge_ttf_get(-max_charge_current, -term_charge_current);
+	ttf = nrf_fuel_gauge_ttf_get(cc_charging, -term_charge_current);
 
 	LOG_INF("V: %.3f, I: %.3f, T: %.2f, SoC: %.2f, TTE: %.0f, TTF: %.0f", voltage, current,
 		temp, soc, tte, ttf);
