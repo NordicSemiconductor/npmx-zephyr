@@ -1,5 +1,6 @@
 @Library("CI_LIB") _
 
-def pipeline = new ncs.npmx_zephyr.Main()
+// Test node is no longer available
+//def pipeline = new ncs.npmx_zephyr.Main()
 
-pipeline.run(JOB_NAME)
+// pipeline.run(JOB_NAME)
