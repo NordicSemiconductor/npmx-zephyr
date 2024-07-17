@@ -5,6 +5,16 @@ Release notes
 
 See the release notes for the information about specific npmx-zephyr releases.
 
+[1.1.0] - 2024-07-17
+---------------------
+
+Changed
+~~~~~~~
+
+- Updated the npmx version to 1.0.1.
+- Updated the nrfxlib version to 2.6.1.
+- Updated the fuel gauge sample for nrfxlib changes.
+
 [1.0.0] - 2023-12-13
 ---------------------
 

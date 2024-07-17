@@ -40,9 +40,9 @@ for file in glob.glob(str(src_dir) + r'/**/*.rst'):
 root_doc = 'index'
 
 project = 'npmx-zephyr'
-copyright = '2023, Nordic Semiconductor'
+copyright = '2024, Nordic Semiconductor'
 author = 'Nordic Semiconductor'
-version = release = "1.0.0"
+version = release = "1.1.0"
 
 sys.path.insert(0, str(NPMX_ZEPHYR_BASE / "doc" / "_extensions"))
 
