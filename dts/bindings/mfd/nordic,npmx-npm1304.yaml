@@ -1,0 +1,34 @@
+#
+# Copyright (c) 2025 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
+
+description: |
+    This is a representation of the nPM1304 PMIC device.
+
+compatible: "nordic,npmx-npm1304"
+
+include: i2c-device.yaml
+
+properties:
+  host-int-gpios:
+    type: phandle-array
+    description: |
+      Host GPIO pin used as interrupt input.
+  pmic-int-pin:
+    type: int
+    description: |
+      nPM GPIO pin number used as interrupt output.
+  host-pof-gpios:
+    type: phandle-array
+    description: |
+      Host GPIO pin used as power loss warning input.
+  pmic-pof-pin:
+    type: int
+    description: |
+      nPM GPIO pin number used as power loss warning output.
+  pmic-reset-pin:
+    type: int
+    description: |
+      nPM GPIO pin number used as watchdog warning reset output.

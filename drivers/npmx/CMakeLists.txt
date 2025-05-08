@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022-2023 Nordic Semiconductor ASA
+# Copyright (c) 2022-2025 Nordic Semiconductor ASA
 #
 # SPDX-License-Identifier: BSD-3-Clause
 #
@@ -9,6 +9,8 @@ zephyr_library()
 # One of NPMX devices have to be selected in Kconfig
 if(CONFIG_NPMX_DEVICE_NPM1300)
     zephyr_compile_definitions(NPM1300)
+elseif(CONFIG_NPMX_DEVICE_NPM1304)
+    zephyr_compile_definitions(NPM1304)
 else()
     return()
 endif()
