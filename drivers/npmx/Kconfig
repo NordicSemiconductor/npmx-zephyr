@@ -27,6 +27,10 @@ choice
 	config NPMX_DEVICE_NPM1300
 		depends on I2C && GPIO
 		bool "nPM1300"
+
+	config NPMX_DEVICE_NPM1304
+		depends on I2C && GPIO
+		bool "nPM1304"
 endchoice
 
 config NPMX_SHELL

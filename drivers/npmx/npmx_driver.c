@@ -15,8 +15,6 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(NPMX, CONFIG_NPMX_LOG_LEVEL);
 
-#define DT_DRV_COMPAT nordic_npmx_npm1300
-
 struct npmx_data {
 	const struct device *dev;
 	npmx_instance_t npmx_instance;
@@ -363,8 +361,13 @@ int npmx_driver_reset_pin_get(const struct device *p_dev)
 	DEVICE_DT_INST_DEFINE(inst, npmx_driver_init, NULL, &npmx_data_##inst,                     \
 			      &npmx_config_##inst, POST_KERNEL, CONFIG_NPMX_INIT_PRIORITY, NULL);
 
+#define DT_DRV_COMPAT nordic_npmx_npm1300
 DT_INST_FOREACH_STATUS_OKAY(NPMX_DEFINE)
+#undef DT_DRV_COMPAT
 
+#define DT_DRV_COMPAT nordic_npmx_npm1304
+DT_INST_FOREACH_STATUS_OKAY(NPMX_DEFINE)
+#undef DT_DRV_COMPAT
 /*
  * Make sure that this driver is not initialized before the I2C bus is available.
  */

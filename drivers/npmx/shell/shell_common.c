@@ -46,16 +46,17 @@ bool check_error_code(const struct shell *shell, npmx_error_t err_code)
 	switch (err_code) {
 	case NPMX_SUCCESS:
 		return true;
-	case NPMX_ERROR_INVALID_PARAM: {
+	case NPMX_ERROR_INVALID_PARAM:
 		shell_error(shell, "Error: invalid parameter for npmx function.");
 		return false;
-	}
-	case NPMX_ERROR_IO: {
+	case NPMX_ERROR_IO:
 		shell_error(shell, "Error: IO error.");
 		return false;
-	}
 	case NPMX_ERROR_INVALID_MEAS:
 		shell_error(shell, "Error: invalid measurement.");
+		return false;
+	case NPMX_ERROR_NOT_SUPPORTED:
+		shell_error(shell, "Error: not supported.");
 		return false;
 	}
 

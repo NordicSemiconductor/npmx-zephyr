@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Nordic Semiconductor ASA
+ * Copyright (c) 2022-2025 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -9,6 +9,8 @@
 
 #if defined(NPM1300)
 #include <npmx_config_npm1300.h>
+#elif defined(NPM1304)
+#include <npmx_config_npm1304.h>
 #else
 #error "Unknown device."
 #endif
