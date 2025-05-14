@@ -45,6 +45,7 @@ typedef struct {
 
 /** @brief Supported unit types. */
 typedef enum {
+	UNIT_TYPE_MICROAMPERE, /* Unit type uA. */
 	UNIT_TYPE_MILLIAMPERE, /* Unit type mA. */
 	UNIT_TYPE_MILLIVOLT, /* Unit type mV. */
 	UNIT_TYPE_CELSIUS, /* Unit type *C. */

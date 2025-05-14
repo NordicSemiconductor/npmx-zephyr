@@ -13,6 +13,8 @@ static const struct device *pmic_dev = DEVICE_DT_GET(DT_NODELABEL(npm_0));
 static const char *unit_str_get(unit_type_t unit_type)
 {
 	switch (unit_type) {
+	case UNIT_TYPE_MICROAMPERE:
+		return " µA";
 	case UNIT_TYPE_MILLIAMPERE:
 		return " mA";
 	case UNIT_TYPE_MILLIVOLT:

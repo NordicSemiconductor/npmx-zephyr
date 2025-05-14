@@ -59,7 +59,7 @@ static int adc_meas_get(const struct shell *shell, npmx_adc_meas_t adc_meas,
 		unit_type = UNIT_TYPE_MILLIVOLT;
 		break;
 	case NPMX_ADC_MEAS_VBAT2_IBAT:
-		unit_type = UNIT_TYPE_MILLIAMPERE;
+		unit_type = UNIT_TYPE_MICROAMPERE;
 		break;
 	default:
 		return 0;
