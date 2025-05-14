@@ -43,8 +43,8 @@ static int read_sensors(npmx_instance_t *const p_pm, float *voltage, float *curr
 		return -EIO;
 	}
 
-	/* Convert current in milliamperes to current in amperes. */
-	*current = (float)meas.values[NPMX_ADC_MEAS_VBAT2_IBAT] / 1000.0f;
+	/* Convert current in microamperes to current in amperes. */
+	*current = (float)meas.values[NPMX_ADC_MEAS_VBAT2_IBAT] / 1000000.0f;
 
 	/* Convert temperature in millidegrees Celsius to temperature in Celsius */
 	*temp = (float)meas.values[NPMX_ADC_MEAS_BAT_TEMP] / 1000.0f;
