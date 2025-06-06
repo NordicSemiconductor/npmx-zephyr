@@ -268,9 +268,13 @@ static int cmd_charger_discharging_current_set(const struct shell *shell, size_t
 		return 0;
 	}
 
+	const uint16_t allowed_values[] = NPM_BCHARGER_DISCHARGING_CURRENTS_MA;
+	int32_t allowed_min = allowed_values[0];
+	int32_t allowed_max = ARRAY_SIZE(allowed_values) > 1 ?
+		allowed_values[ARRAY_SIZE(allowed_values) - 1] : allowed_values[0];
+
 	if (!range_check(shell, args_info.arg[0].result.uvalue,
-			 NPM_BCHARGER_DISCHARGING_CURRENT_MIN_MA,
-			 NPM_BCHARGER_DISCHARGING_CURRENT_MAX_MA, "discharging current")) {
+			 allowed_min, allowed_max, "discharging current")) {
 		return 0;
 	}
 
