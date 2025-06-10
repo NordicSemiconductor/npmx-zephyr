@@ -17,8 +17,8 @@ npmx_charger_t *charger_instance_get(const struct shell *shell)
 }
 
 static bool charger_charging_current_set_helper(const struct shell *shell,
-						npmx_charger_t *charger_instance, uint16_t current,
-						uint16_t *p_charging_current)
+						npmx_charger_t *charger_instance, uint32_t current,
+						uint32_t *p_charging_current)
 {
 	npmx_error_t err_code = npmx_charger_charging_current_set(charger_instance, current);
 	if (!check_error_code(shell, err_code)) {
@@ -58,16 +58,16 @@ static int cmd_charger_charging_current_set(const struct shell *shell, size_t ar
 	}
 
 	if (!range_check(shell, args_info.arg[0].result.uvalue,
-			 NPM_BCHARGER_CHARGING_CURRENT_MIN_MA, NPM_BCHARGER_CHARGING_CURRENT_MAX_MA,
+			 NPM_BCHARGER_CHARGING_CURRENT_MIN_UA, NPM_BCHARGER_CHARGING_CURRENT_MAX_UA,
 			 "charging current")) {
 		return 0;
 	}
 
-	uint16_t charging_current_ma = (uint16_t)args_info.arg[0].result.uvalue;
-	uint16_t current_actual;
-	if (charger_charging_current_set_helper(shell, charger_instance, charging_current_ma,
+	uint32_t charging_current_ua = (uint32_t)args_info.arg[0].result.uvalue;
+	uint32_t current_actual;
+	if (charger_charging_current_set_helper(shell, charger_instance, charging_current_ua,
 						&current_actual)) {
-		print_success(shell, current_actual, UNIT_TYPE_MILLIAMPERE);
+		print_success(shell, current_actual, UNIT_TYPE_MICROAMPERE);
 	}
 	return 0;
 }
@@ -82,15 +82,15 @@ static int cmd_charger_charging_current_get(const struct shell *shell, size_t ar
 		return 0;
 	}
 
-	uint16_t charging_current_ma;
+	uint32_t charging_current_ua;
 	npmx_error_t err_code =
-		npmx_charger_charging_current_get(charger_instance, &charging_current_ma);
+		npmx_charger_charging_current_get(charger_instance, &charging_current_ua);
 	if (!check_error_code(shell, err_code)) {
 		print_get_error(shell, "charging current");
 		return 0;
 	}
 
-	print_value(shell, charging_current_ma, UNIT_TYPE_MILLIAMPERE);
+	print_value(shell, charging_current_ua, UNIT_TYPE_MICROAMPERE);
 	return 0;
 }
 
@@ -270,8 +270,7 @@ static int cmd_charger_discharging_current_set(const struct shell *shell, size_t
 
 	const uint16_t allowed_values[] = NPM_BCHARGER_DISCHARGING_CURRENTS_MA;
 	int32_t allowed_min = allowed_values[0];
-	int32_t allowed_max = ARRAY_SIZE(allowed_values) > 1 ?
-		allowed_values[ARRAY_SIZE(allowed_values) - 1] : allowed_values[0];
+	int32_t allowed_max = allowed_values[ARRAY_SIZE(allowed_values) - 1];
 
 	if (!range_check(shell, args_info.arg[0].result.uvalue,
 			 allowed_min, allowed_max, "discharging current")) {

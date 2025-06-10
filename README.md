@@ -11,6 +11,7 @@ For the user's convenience, this repository includes also a variety of sample ap
 
 ## Supported devices
  -    nPM1300
+ -    nPM1304
 
 ## How to use
 
