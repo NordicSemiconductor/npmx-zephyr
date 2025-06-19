@@ -25,13 +25,13 @@ void leds_status_set(npmx_instance_t *p_pm, uint8_t status)
 	npmx_led_state_set(npmx_led_get(p_pm, 2), (status & (1UL << 2UL)) > 0);
 }
 
-void main(void)
+int main(void)
 {
 	const struct device *pmic_dev = DEVICE_DT_GET(DT_NODELABEL(npm_0));
 
 	if (!device_is_ready(pmic_dev)) {
 		LOG_INF("PMIC device is not ready.");
-		return;
+		return 0;
 	}
 
 	LOG_INF("PMIC device OK.");
@@ -54,4 +54,6 @@ void main(void)
 		}
 		LOG_INF("LEDs blinking.");
 	}
+
+	return 0;
 }
