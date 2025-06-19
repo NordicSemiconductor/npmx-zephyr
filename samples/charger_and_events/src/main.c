@@ -285,13 +285,13 @@ static void charger_battery_callback(npmx_instance_t *p_pm, npmx_callback_type_t
 	}
 }
 
-void main(void)
+int main(void)
 {
 	const struct device *pmic_dev = DEVICE_DT_GET(DT_NODELABEL(npm_0));
 
 	if (!device_is_ready(pmic_dev)) {
 		LOG_INF("PMIC device is not ready.");
-		return;
+		return 0;
 	}
 
 	LOG_INF("PMIC device OK.");
@@ -383,4 +383,6 @@ void main(void)
 	while (1) {
 		k_sleep(K_FOREVER);
 	}
+
+	return 0;
 }

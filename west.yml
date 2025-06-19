@@ -23,7 +23,7 @@ manifest:
       path: modules/npmx
       revision: 3312e7763c8f9c1651bfdf996c6b581f79b6bdcf
     - name: zephyr
-      revision: v3.3.0
+      revision: v4.1.0
       import: true
       remote: zephyrproject
     - name: sdk-nrfxlib

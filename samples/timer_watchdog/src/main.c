@@ -135,13 +135,13 @@ void configure_reset_interrupt(void)
 	gpio_add_callback(irq_res.port, &irq_res_cb_data);
 }
 
-void main(void)
+int main(void)
 {
 	const struct device *pmic_dev = DEVICE_DT_GET(DT_NODELABEL(npm_0));
 
 	if (!device_is_ready(pmic_dev)) {
 		LOG_INF("PMIC device is not ready.");
-		return;
+		return 0;
 	}
 
 	LOG_INF("PMIC device OK.");
@@ -195,4 +195,6 @@ void main(void)
 			break;
 		}
 	}
+
+	return 0;
 }

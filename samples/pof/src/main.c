@@ -21,13 +21,13 @@ void my_pof_callback(npmx_instance_t *p_pm)
 	LOG_INF("POF callback.");
 }
 
-void main(void)
+int main(void)
 {
 	const struct device *pmic_dev = DEVICE_DT_GET(DT_NODELABEL(npm_0));
 
 	if (!device_is_ready(pmic_dev)) {
 		LOG_INF("PMIC device is not ready.");
-		return;
+		return 0;
 	}
 
 	LOG_INF("PMIC device OK.");
@@ -43,4 +43,6 @@ void main(void)
 	if (npmx_driver_register_pof_cb(pmic_dev, &config, my_pof_callback) == 0) {
 		LOG_INF("Successfully registered callback.");
 	}
+
+	return 0;
 }
