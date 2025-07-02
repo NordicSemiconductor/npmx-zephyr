@@ -57,13 +57,13 @@ static void verify_ldsw_voltage(npmx_ldsw_t *p_ldsw, npmx_ldsw_voltage_t start_v
 	}
 }
 
-void main(void)
+int main(void)
 {
 	const struct device *pmic_dev = DEVICE_DT_GET(DT_NODELABEL(npm_0));
 
 	if (!device_is_ready(pmic_dev)) {
 		LOG_INF("PMIC device is not ready.");
-		return;
+		return 0;
 	}
 
 	LOG_INF("PMIC device OK.");
@@ -97,12 +97,12 @@ void main(void)
 
 	if (npmx_ldsw_task_trigger(ldsw_1, NPMX_LDSW_TASK_ENABLE) != NPMX_SUCCESS) {
 		LOG_ERR("Unable to enable LDO1.");
-		return;
+		return 0;
 	}
 
 	if (npmx_ldsw_task_trigger(ldsw_2, NPMX_LDSW_TASK_ENABLE) != NPMX_SUCCESS) {
 		LOG_ERR("Unable to enable LDO2.");
-		return;
+		return 0;
 	}
 
 	/* Test voltage ranges for LDOs. */
@@ -118,4 +118,6 @@ void main(void)
 	while (1) {
 		k_sleep(K_FOREVER);
 	}
+
+	return 0;
 }

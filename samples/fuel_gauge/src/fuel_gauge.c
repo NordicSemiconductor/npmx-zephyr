@@ -115,8 +115,8 @@ int fuel_gauge_update(npmx_instance_t *const p_pm)
 	tte = nrf_fuel_gauge_tte_get();
 	ttf = nrf_fuel_gauge_ttf_get(cc_charging, -term_charge_current);
 
-	LOG_INF("V: %.3f, I: %.3f, T: %.2f, SoC: %.2f, TTE: %.0f, TTF: %.0f", voltage, current,
-		temp, soc, tte, ttf);
+	LOG_INF("V: %.3f, I: %.3f, T: %.2f, SoC: %.2f, TTE: %.0f, TTF: %.0f", (double)voltage, (double)current,
+		(double)temp, (double)soc, (double)tte, (double)ttf);
 
 	return 0;
 }

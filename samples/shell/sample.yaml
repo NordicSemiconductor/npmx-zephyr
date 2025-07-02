@@ -15,9 +15,11 @@ common:
 tests:
   sample.shell:
     integration_platforms:
-      - nrf5340dk_nrf5340_cpuapp
-      - nrf52840dk_nrf52840
-    platform_allow: nrf5340dk_nrf5340_cpuapp nrf52840dk_nrf52840
+      - nrf5340dk/nrf5340/cpuapp
+      - nrf52840dk/nrf52840
+    platform_allow:
+    - nrf5340dk/nrf5340/cpuapp
+    - nrf52840dk/nrf52840
     extra_args: CONFIG_NPMX_DEVICE_NPM1300=y
     harness: console
     harness_config:

@@ -21,13 +21,13 @@ static void pof_callback(npmx_instance_t *instance)
 	LOG_INF("POF callback");
 }
 
-void main(void)
+int main(void)
 {
 	const struct device *pmic_dev = DEVICE_DT_GET(DT_NODELABEL(npm_0));
 
 	if (!device_is_ready(pmic_dev)) {
 		LOG_ERR("PMIC device is not ready.");
-		return;
+		return 0;
 	}
 
 	LOG_INF("PMIC device OK.");
@@ -40,7 +40,7 @@ void main(void)
 	npmx_error_t err_code = npmx_pof_config_get(pof_instance, &pof_config);
 	if (err_code != NPMX_SUCCESS) {
 		LOG_ERR("Unable to read POF config.");
-		return;
+		return 0;
 	}
 
 	/* Register callback so that POF warnings can be printed. */
@@ -49,4 +49,6 @@ void main(void)
 	while (1) {
 		k_sleep(K_FOREVER);
 	}
+
+	return 0;
 }
