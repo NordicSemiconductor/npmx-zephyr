@@ -19,11 +19,10 @@ common:
 
 tests:
   sample.timer.watchdog.simple:
-    extra_args: CONFIG_NPMX_DEVICE_NPM1300=y
     timeout: 30
     harness: console
     harness_config:
-      fixture: nPM1300_setup
+      fixture: nPM130x_setup
       type: multi_line
       ordered: true
       regex:
@@ -31,7 +30,6 @@ tests:
         - "Watchdog is being kicked, press any key to stop it."
 
   sample.timer.watchdog.advanced:
-    extra_args: CONFIG_NPMX_DEVICE_NPM1300=y
     harness: console
     harness_config:
       fixture: nPM1300_setup_and_manual_action

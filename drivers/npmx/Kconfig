@@ -20,18 +20,21 @@ config NPMX_INIT_PRIORITY
 	help
 	  NPMX initialization priority.
 
-choice
-	prompt "IC version"
-	default NPMX_DEVICE_NPM1300
+config NPMX_DEVICE_NPM1300
+	bool "nPM1300"
+	default y
+	select I2C
+	depends on DT_HAS_NORDIC_NPMX_NPM1300_ENABLED
+	help
+	  nPM1300 PMIC.
 
-	config NPMX_DEVICE_NPM1300
-		depends on I2C && GPIO
-		bool "nPM1300"
-
-	config NPMX_DEVICE_NPM1304
-		depends on I2C && GPIO
-		bool "nPM1304"
-endchoice
+config NPMX_DEVICE_NPM1304
+	bool "nPM1304"
+	default y
+	select I2C
+	depends on DT_HAS_NORDIC_NPMX_NPM1304_ENABLED
+	help
+	  nPM1304 PMIC.
 
 config NPMX_SHELL
 	depends on SHELL
