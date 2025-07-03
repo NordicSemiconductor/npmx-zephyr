@@ -21,10 +21,9 @@ common:
 tests:
   sample.ldsw.sw_enable:
     extra_args: CONFIG_TESTCASE_SW_ENABLE=y
-                CONFIG_NPMX_DEVICE_NPM1300=y
     harness: console
     harness_config:
-      fixture: nPM1300_setup
+      fixture: nPM130x_setup
       type: multi_line
       ordered: true
       regex:
@@ -34,10 +33,9 @@ tests:
 
   sample.ldsw.gpio_enable:
     extra_args: CONFIG_TESTCASE_GPIO_ENABLE=y
-                CONFIG_NPMX_DEVICE_NPM1300=y
     harness: console
     harness_config:
-      fixture: nPM1300_setup
+      fixture: nPM130x_setup
       type: multi_line
       ordered: true
       regex:

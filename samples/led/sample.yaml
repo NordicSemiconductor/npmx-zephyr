@@ -20,10 +20,9 @@ common:
 
 tests:
   sample.led:
-    extra_args: CONFIG_NPMX_DEVICE_NPM1300=y
     harness: console
     harness_config:
-      fixture: nPM1300_setup
+      fixture: nPM130x_setup
       type: multi_line
       ordered: true
       regex:
