@@ -1,0 +1,56 @@
+#
+# Copyright (c) 2025 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
+
+# Simple workflow for compiling samples
+name: Compile samples
+
+on:
+  pull_request_target:
+    types: [opened, synchronize]
+    branches:
+      - main
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+
+# Allow one concurrent deployment
+concurrency:
+  group: "compile-samples"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+
+      - name: Install requirements
+        run: |
+          curl https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/executables/x86_64-unknown-linux-gnu/nrfutil -o nrfutil;
+          chmod +x nrfutil;
+          ./nrfutil self-upgrade;
+          ./nrfutil install sdk-manager;
+          ./nrfutil sdk-manager install v3.0.0;
+
+      - name: Setup environment
+        run: |
+          ./nrfutil sdk-manager toolchain launch --ncs-version v3.0.0 -- west init --local;
+          ./nrfutil sdk-manager toolchain launch --ncs-version v3.0.0 -- west update;
+
+      - name: Build samples
+        run: |
+          for sample in $PWD/samples/*
+          do
+            ./nrfutil sdk-manager toolchain launch --ncs-version v3.0.0 -- west build --pristine --board nrf52840dk/nrf52840 $sample;
+            ./nrfutil sdk-manager toolchain launch --ncs-version v3.0.0 -- west build --pristine --board nrf5340dk/nrf5340/cpuapp $sample;
+          done
