@@ -1,0 +1,76 @@
+#
+# Copyright (c) 2025 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
+
+# Simple workflow for compiling samples
+name: Compile samples
+
+on:
+  pull_request_target:
+    types: [opened, synchronize]
+    branches:
+      - main
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Allow one concurrent deployment
+concurrency:
+  group: "compile-samples"
+  cancel-in-progress: true
+
+jobs:
+  determine_ncs_version:
+    runs-on: ubuntu-latest
+    outputs:
+      ncs_revision: ${{ steps.parse_revision.outputs.NCS_REVISION }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Parse NCS revision
+        id: parse_revision
+        run: |
+          export NCS_REVISION=$(awk '/^.*name: nrf/ { found=1; next } found && /^.*revision:/ { gsub(/^.*revision: /, ""); print; found=0 } found && /^.*name:/ { found=0 }' west.yml);
+          echo "NCS_REVISION=${NCS_REVISION}" >> "$GITHUB_OUTPUT"
+          echo "NCS_REVISION=${NCS_REVISION}"
+
+  compile:
+    runs-on: ubuntu-22.04
+    needs: determine_ncs_version
+    container:
+      image: ghcr.io/nrfconnect/sdk-nrf-toolchain:${{ needs.determine_ncs_version.outputs.NCS_REVISION }}
+      env:
+        ACCEPT_JLINK_LICENSE: 0 # Don't need J-Link
+        NCS_REVISION: ${{needs.determine_ncs_version.outputs.NCS_REVISION}}
+    defaults:
+      run:
+        shell: bash  # It is required to set `bash` as default shell
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup environment
+        # The toolchain should be installed already, but it might be under a sha instead of tag.
+        # The install operation will check this.
+        run: |
+          nrfutil self-upgrade;
+          nrfutil install sdk-manager;
+          nrfutil sdk-manager toolchain install --ncs-version $NCS_REVISION;
+          nrfutil sdk-manager toolchain launch --ncs-version $NCS_REVISION -- west init --local;
+          nrfutil sdk-manager toolchain launch --ncs-version $NCS_REVISION -- west update;
+
+      - name: Build samples
+        run: |
+          for sample in $PWD/samples/*
+          do
+            nrfutil sdk-manager toolchain launch --ncs-version $NCS_REVISION -- west build --pristine --board nrf52840dk/nrf52840 $sample;
+            nrfutil sdk-manager toolchain launch --ncs-version $NCS_REVISION -- west build --pristine --board nrf5340dk/nrf5340/cpuapp $sample;
+          done
