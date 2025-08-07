@@ -19,7 +19,6 @@ common:
 
 tests:
   sample.fuel_gauge:
-    extra_args: CONFIG_NPMX_DEVICE_NPM1300=y
     harness: console
     harness_config:
       fixture: nPM1300_with_battery_setup
