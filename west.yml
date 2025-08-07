@@ -20,13 +20,21 @@ manifest:
 
   projects:
     - name: npmx
-      path: modules/npmx
+      remote: NordicSemiconductor
+      path: npmx
       revision: 3312e7763c8f9c1651bfdf996c6b581f79b6bdcf
-    - name: zephyr
-      revision: v4.1.0
-      import: true
-      remote: zephyrproject
-    - name: sdk-nrfxlib
+    - name: nrf
       remote: nrfconnect
-      revision: v2.6.1
-      path: modules/nrfxlib
+      repo-path: sdk-nrf
+      path: nrf
+      revision: v3.0.0
+      import:
+        name-allowlist:
+          - zephyr
+          - nrfxlib
+          - hal_nordic
+          - open-amp
+          - libmetal
+          - cmsis
+          - cmsis_6
+          - segger
