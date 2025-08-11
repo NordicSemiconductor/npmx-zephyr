@@ -62,7 +62,11 @@ int main(void)
 	npmx_charger_charging_current_set(charger_instance, CONFIG_CHARGING_CURRENT);
 
 	/* Set maximum discharging current. */
-	npmx_charger_discharging_current_set(charger_instance, CONFIG_DISCHARGING_CURRENT);
+	if (IS_ENABLED(CONFIG_DISCHARGING_CURRENT_1000)) {
+		npmx_charger_discharging_current_set(charger_instance, 1000);
+	} else if (IS_ENABLED(CONFIG_DISCHARGING_CURRENT_200)) {
+		npmx_charger_discharging_current_set(charger_instance, 200);
+	}
 
 	/* Set battery termination voltage in normal temperature. */
 	npmx_charger_termination_normal_voltage_set(
