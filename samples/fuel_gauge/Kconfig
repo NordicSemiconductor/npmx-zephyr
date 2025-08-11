@@ -59,13 +59,15 @@ mainmenu "Fuel Gauge example"
 			range 32 800
 			default 150
 
-		config DISCHARGING_CURRENT
-			int "Battery discharge current limit (in milliamperes)"
-			help
-				Available range is 270 mA to 1340 mA in 3.23 mA steps.
-				The value specified will be rounded down to the closest implemented value.
-			range 270 1340
-			default 1000
+		choice
+			prompt "Battery discharge current limit (in milliamperes)"
+			default DISCHARGING_CURRENT_1000
+
+			config DISCHARGING_CURRENT_1000
+				bool "1000 mA"
+			config DISCHARGING_CURRENT_200
+				bool "200 mA"
+		endchoice
 
 		choice
 			prompt "Battery termination voltage in normal temperature"
