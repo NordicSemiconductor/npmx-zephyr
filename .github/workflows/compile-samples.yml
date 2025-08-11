@@ -19,9 +19,8 @@ on:
 permissions:
   contents: read
 
-# Allow one concurrent deployment
 concurrency:
-  group: "compile-samples"
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
