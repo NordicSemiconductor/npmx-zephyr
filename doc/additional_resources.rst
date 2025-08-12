@@ -9,3 +9,4 @@ For additional resources, refer to the following list:
 * `Nordic Semiconductor - Power Management ICs`_
 * `npmx library`_
 * `Nordic Semiconductor - nPM1300`_
+* `Nordic Semiconductor - nPM1304`_

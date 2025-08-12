@@ -5,6 +5,18 @@ Release notes
 
 See the release notes for the information about specific npmx-zephyr releases.
 
+[1.2.0] - 2025-08-12
+---------------------
+
+Changed
+~~~~~~~
+
+- Updated the npmx version to v1.2.0.
+- Updated the west manifest to track nRF Connect SDK v3.0.0
+- Updated sample overlays for nrf52840dk to support nPM1304.
+  - Note that nrf52840dk overlays are using nPM1304, while nrf5340dk overlays are using nPM1300.
+- Updated samples for npmx changes and fuel gauge library changes.
+
 [1.1.0] - 2024-07-17
 ---------------------
 
