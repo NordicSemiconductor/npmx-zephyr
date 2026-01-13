@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include "npmx_common.h"
 #include "shell_common.h"
 #include <npmx_driver.h>
 
@@ -313,6 +314,11 @@ static int cmd_ldsw_mode_set(const struct shell *shell, size_t argc, char **argv
 		return 0;
 	}
 
+	npmx_instance_t *npmx_instance = npmx_instance_get(shell);
+	if (npmx_instance == NULL) {
+		return 0;
+	}
+
 	npmx_ldsw_t *ldsw_instance = ldsw_instance_get(shell, args_info.arg[0].result.uvalue);
 	if (ldsw_instance == NULL) {
 		return 0;
@@ -320,11 +326,20 @@ static int cmd_ldsw_mode_set(const struct shell *shell, size_t argc, char **argv
 
 	uint32_t mode = args_info.arg[1].result.uvalue;
 	npmx_ldsw_mode_t ldsw_mode;
+	uint8_t major, minor, patch;
 	switch (mode) {
 	case 0:
 		ldsw_mode = NPMX_LDSW_MODE_LOAD_SWITCH;
 		break;
 	case 1:
+#ifdef NPM1304
+		/* set LDO with soft start if available */
+		npmx_core_pmic_revision_get(npmx_instance, &major, &minor, &patch);
+		if (major > 1 || (major == 1 && minor >= 1)) {
+			ldsw_mode = NPMX_LDSW_MODE_LDO_SOFT_START;
+			break;
+		}
+#endif // NPM1304
 		ldsw_mode = NPMX_LDSW_MODE_LDO;
 		break;
 	default:
@@ -377,6 +392,10 @@ static int cmd_ldsw_mode_get(const struct shell *shell, size_t argc, char **argv
 	if (!check_error_code(shell, err_code)) {
 		print_get_error(shell, "LDSW mode");
 		return 0;
+	}
+	if (mode == NPMX_LDSW_MODE_LDO_SOFT_START) {
+		/* to keep consistent with setter */
+		mode = NPMX_LDSW_MODE_LDO;
 	}
 
 	print_value(shell, (int)mode, UNIT_TYPE_NONE);
