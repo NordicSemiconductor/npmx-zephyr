@@ -22,7 +22,7 @@ manifest:
     - name: npmx
       remote: NordicSemiconductor
       path: npmx
-      revision: a855f2db0bca3ed834fa955868ab4b9ab24c385a
+      revision: v1.3.1
     - name: nrf
       remote: nrfconnect
       repo-path: sdk-nrf
