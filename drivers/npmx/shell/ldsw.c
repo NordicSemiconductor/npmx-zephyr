@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include "npmx_common.h"
 #include "shell_common.h"
+#include "npmx_common.h"
 #include <npmx_driver.h>
 
 /** @brief Load switch GPIO configuration parameter. */

@@ -4,13 +4,14 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <npmx_core.h>
-#include <npmx_driver.h>
 
 #include <zephyr/types.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/sys/byteorder.h>
+
+#include <npmx_core.h>
+#include <npmx_driver.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(NPMX, CONFIG_NPMX_LOG_LEVEL);
