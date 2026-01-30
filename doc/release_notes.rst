@@ -5,6 +5,24 @@ Release notes
 
 See the release notes for the information about specific npmx-zephyr releases.
 
+[1.3.1] - 2026-01-30
+---------------------
+
+Changed
+~~~~~~~
+
+- Reordered some includes to avoid conflict with nrfx compiler_abstraction.h
+
+
+[1.3.0] - 2026-01-23
+---------------------
+
+Changed
+~~~~~~~
+
+- Updated the npmx version to v1.3.1 with support for LDO Soft Start.
+- The shell command npmx ldsw mode set will now automatically select NPMX_LDSW_MODE_LDO_SOFT_START on applicable devices.
+
 [1.2.0] - 2025-08-12
 ---------------------
 
