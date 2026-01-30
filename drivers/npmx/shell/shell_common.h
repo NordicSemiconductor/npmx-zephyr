@@ -7,10 +7,11 @@
 #ifndef ZEPHYR_DRIVERS_SHELL_COMMON_H__
 #define ZEPHYR_DRIVERS_SHELL_COMMON_H__
 
+#include <zephyr/shell/shell.h>
+
 #include <npmx.h>
 #include <npmx_adc.h>
 #include <npmx_charger.h>
-#include <zephyr/shell/shell.h>
 
 /** @brief Max supported number of shell arguments. */
 #define SHELL_ARG_MAX_COUNT 3U
