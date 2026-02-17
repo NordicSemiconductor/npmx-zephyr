@@ -319,7 +319,8 @@ static int cmd_ldsw_mode_set(const struct shell *shell, size_t argc, char **argv
 		return 0;
 	}
 
-	npmx_ldsw_t *ldsw_instance = ldsw_instance_get(shell, args_info.arg[0].result.uvalue);
+	uint8_t ldsw_idx = (uint8_t)args_info.arg[0].result.uvalue;
+	npmx_ldsw_t *ldsw_instance = ldsw_instance_get(shell, ldsw_idx);
 	if (ldsw_instance == NULL) {
 		return 0;
 	}
@@ -356,16 +357,32 @@ static int cmd_ldsw_mode_set(const struct shell *shell, size_t argc, char **argv
 	}
 
 	/* LDSW reset is required to apply mode change. */
-	err_code = npmx_ldsw_task_trigger(ldsw_instance, NPMX_LDSW_TASK_DISABLE);
+	/* Check the current status first */
+	uint8_t status_mask;
+	err_code = npmx_ldsw_status_get(ldsw_instance, &status_mask);
 	if (!check_error_code(shell, err_code)) {
-		shell_error(shell, "Error: reset error while disabling LDSW to change mode.");
+		shell_error(shell, "Error: failed to get LDSW status");
 		return 0;
 	}
 
-	err_code = npmx_ldsw_task_trigger(ldsw_instance, NPMX_LDSW_TASK_ENABLE);
-	if (!check_error_code(shell, err_code)) {
-		shell_error(shell, "Error: reset error while enabling LDSW to change mode.");
-		return 0;
+	uint8_t check_mask = ldsw_idx == 0 ? (NPMX_LDSW_STATUS_POWERUP_LDSW_1_MASK |
+					      NPMX_LDSW_STATUS_POWERUP_LDO_1_MASK) :
+					     (NPMX_LDSW_STATUS_POWERUP_LDSW_2_MASK |
+					      NPMX_LDSW_STATUS_POWERUP_LDO_2_MASK);
+
+	if (status_mask & check_mask) {
+		/* Enabled - need to reset */
+		err_code = npmx_ldsw_task_trigger(ldsw_instance, NPMX_LDSW_TASK_DISABLE);
+		if (!check_error_code(shell, err_code)) {
+			shell_error(shell, "Error: reset error while disabling LDSW to change mode.");
+			return 0;
+		}
+
+		err_code = npmx_ldsw_task_trigger(ldsw_instance, NPMX_LDSW_TASK_ENABLE);
+		if (!check_error_code(shell, err_code)) {
+			shell_error(shell, "Error: reset error while enabling LDSW to change mode.");
+			return 0;
+		}
 	}
 
 	print_success(shell, mode, UNIT_TYPE_NONE);
